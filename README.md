@@ -1,4 +1,5 @@
-# test_act
+# Test_ACT
+## Space debris Index (SDI) code
 
 Run the space debris index (SDI) code by using the command: python RUN_SDI_code.py SDI_inputs.json
 For now this inputs need to be changed in RUN_SDI_code.py but soon from the SDI_inputs.json file
@@ -17,4 +18,5 @@ The code starts with collecting the inputs and then uses three cases with switch
 The main method then calls methods from space_debris_index.py and common methods for orbital mechanics from common_functions.py and manoeuvre.py (both defined in TCAT)
 The code uses two .csv files for its calculation. 
 
+## Atmospheric emissions of launchers
 All files and fodlers starting with atm_ are in progress for the calculation of the atmospheric emissions during a launch.
