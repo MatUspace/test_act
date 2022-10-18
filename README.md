@@ -1,8 +1,9 @@
 # Test_ACT
 ## Space debris Index (SDI) code
 
-Run the space debris index (SDI) code by using the command: python RUN_SDI_code.py SDI_inputs.json
-For now this inputs need to be changed in RUN_SDI_code.py but soon from the SDI_inputs.json file
+Run the space debris index (SDI) code by using the command: _python RUN_SDI_code.py SDI_inputs.json_
+
+For now this inputs have to be changed in RUN_SDI_code.py but soon from the SDI_inputs.json file
 
 The code starts with collecting the inputs and then uses three cases with switches:
   1. The operational perigee is below the atmospheric limit (set to 200km) which means the object is considered re-entered.
@@ -15,7 +16,7 @@ The code starts with collecting the inputs and then uses three cases with switch
     o Case of a circular operational orbit
     o Case of an elliptical operational orbit
 
-The main method then calls methods from space_debris_index.py and common methods for orbital mechanics from common_functions.py and manoeuvre.py (both defined in TCAT)
+The _main_ method then calls methods from space_debris_index.py and common methods for orbital mechanics from common_functions.py and manoeuvre.py (both defined in TCAT)
 The code uses two .csv files for its calculation. 
 
 ## Atmospheric emissions of launchers
