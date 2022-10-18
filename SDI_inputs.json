@@ -1,0 +1,19 @@
+{
+  "starting_epoch": "2018-01-01 12:00:00",
+  "op_ending_epoch": "2026-01-01 12:00:00",
+
+  "mass": 1250, 
+  "cross_section": 15.5,
+  "mean_thrust": 8,
+  "Isp": 210,
+
+  "apogee_object_op": 800,
+  "perigee_object_op": 800,
+  "inc_object_op": 98,
+
+  "EOL_manoeuvre": false,
+  "PMD_success": 0.9,
+  "apogee_object_disp": 800,
+  "perigee_object_disp": 400,
+  "inc_object_disp": 98
+}
