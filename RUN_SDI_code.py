@@ -4,13 +4,9 @@
 # Emails:           mathieu.udriot@epfl.ch
 # Description:      Script for computation needed for the space debris index to be used in ACT, inputs
 
-import sys
-from json import load as load_json
-
 from astropy import units as u
 from astropy.time import Time
 from poliastro.bodies import Earth
-from sqlalchemy import true
 from space_debris_index import *
 
 def main():
@@ -18,13 +14,10 @@ def main():
     print('Creating inputs...')
     # input parameters
 
-    # TODO group inputs in a json ? to use API
-    # json = open_input_json()
-    # if(json is None): exit() 
-
     # TODO allow users to define more than 1 operational orbit, ideally would use more of TCAT to compute impact at each manoeuvres, also with changes in inclination ? (can be neglected for launchers but not for active spacecrafts (kickstage, ADR servicers))
     # TODO include collision avoidance manoeuvres and passivation in the assessment ?
     # TODO add check with propellant mass if maneuvres can be performed (would be solved by using TCAT directly)
+    # TODO add other means of manoeuvring else than propulsive (drag sails, tumbling ?)
 
     mass = 1195 * u.kg
     if mass.value <= 0:
@@ -34,12 +27,6 @@ def main():
     cross_section = 15.5 * u.m ** 2
     if cross_section.value <= 0:
         raise ValueError("Cross section muss be a positive number (m^2).")
-
-    # drag coefficient 
-    # ~1 for cylinders ?
-    # C_d = 1 * u.one
-    # if C_d.value <= 0:
-    #    raise ValueError("C_d muss be a positive number (-).")
     
     starting_epoch = Time("2018-01-01 12:00:00", scale="tdb")
     op_ending_epoch = Time("2030-01-01 12:00:00", scale="tdb")
@@ -73,7 +60,7 @@ def main():
                                             starting_epoch)
     
     EOL_manoeuvre = True
-    
+
     if EOL_manoeuvre == True:
         # TODO account for Post Mission Disposal (PMD) Success Rate by computing the impacts with and without successful manoeuvres and sum the two
         PMD_success = 0.9
@@ -104,6 +91,7 @@ def main():
     
     # case without manoeuvre
     else:
+        PMD_success = 0
         disposal_orbit = operational_orbit
     
     # input .csv file for characterization factor
@@ -111,45 +99,60 @@ def main():
     # input .csv file for natural decay
     reduced_lifetime_file = np.genfromtxt(f'reduced_lifetime.csv', delimiter=",", skip_header=2)
 
+    SDI_results = SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration, mean_thrust, Isp, operational_orbit, EOL_manoeuvre, disposal_orbit)
+
+def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration, mean_thrust, Isp, operational_orbit, EOL_manoeuvre, disposal_orbit):
     # Impact score computation
     print('Start finding the orbital case and computing impact score...')
 
     # #1 Case if operational perigee is lower than the atmosphere limit, no natural decay hereafter
-    if perigee_object_op < ALTITUDE_ATMOSPHERE_LIMIT:
+    if (operational_orbit.r_p - Earth.R) < ALTITUDE_ATMOSPHERE_LIMIT:
         # Case if object is already completely in the atmosphere
-        if apogee_object_op < ALTITUDE_ATMOSPHERE_LIMIT:
+        if (operational_orbit.r_a - Earth.R) < ALTITUDE_ATMOSPHERE_LIMIT:
             print("Object will reenter directly.")
             impact_score = 0 * u.year *u.pot_fragments
+            op_impact_percentage = 0
+            disp_maneuver_impact_percentage = 0
+            natural_impact_percentage = 0
             print("Computed space debris impact score is", impact_score, ".")
-            return
+
+            results = {"Space_Debris_Index": impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage}
+            return results
         else:
             # Case if apogee is in space and perigee in the atmosphere: direct reentry
             print("Direct reentry.")
-            # decompose elliptical orbit and use time_to_anomaly after finding LTAN from position meaning altitude
-            # Compute impact of reentry
+            # Compute impact of reentry: decompose elliptical orbit and use time_to_anomaly after finding LTAN from position meaning altitude
             disposal_impact = elliptical_orbit_decomposition(CF_file, operational_orbit, mass)
 
-            # TODO compute natural decay if apogee is in LEO, and weight impact with PMD success rate
-
             impact_score = disposal_impact*mass*cross_section
+            op_impact_percentage = 0
+            disp_maneuver_impact_percentage = 100
+            natural_impact_percentage = 0
             print("Computed space debris impact score is", "{:.3f}".format(impact_score), ". 0 percent operational impact, 100 percent disposal impact.")
-            return
+
+            results = {"Space_Debris_Index": impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage}
+            return results
 
     # #2 Case if object's perigee is higher than LEO
-    elif perigee_object_op > ALTITUDE_LEO_LIMIT:
+    elif (operational_orbit.r_p - Earth.R) > ALTITUDE_LEO_LIMIT:
         print("Operational orbit is higher than LEO, no debris impact computed for the operational phase.")
         CF_op = 0
+        op_impact_percentage = 0
         # Check disposal orbit
-        if perigee_object_disp > ALTITUDE_LEO_LIMIT:
+        if (disposal_orbit.r_p - Earth.R) > ALTITUDE_LEO_LIMIT:
             print("Graveyard orbit outside of LEO, no debris impact computed for the disposal phase.")
+            # TODO add decay from above LEO limit ?
             impact_score = 0 * u.year *u.pot_fragments
+            disp_maneuver_impact_percentage = 0
+            natural_impact_percentage = 0
             print("Computed space debris impact score is", impact_score, ".")
-            return
+
+            results = {"Space_Debris_Index": impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage}
+            return results
         else:
             print("Reentry manoeuvre from operational orbit higher than LEO.")
             manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
-            # decompose elliptical orbit and use time_to_anomaly after finding LTAN from position meaning altitude
-            # Compute impact of disposal manoeuvre
+            # Compute impact of disposal manoeuvre: decompose elliptical orbit and use time_to_anomaly after finding LTAN from position meaning altitude
             print("Disposal manoeuvre")
             disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass)*(mass - burned_mass)*cross_section
 
@@ -161,15 +164,16 @@ def main():
 
             natural_impact_percentage = natural_decay_impact/total_impact_score*100
             disp_maneuver_impact_percentage = 100 - natural_impact_percentage
-
             print("Computed space debris impact score is", "{:.3f}".format(total_impact_score), ". 0 percent operational impact, 100 percent disposal impact. Of which", "{:.3f}".format(disp_maneuver_impact_percentage), "percent from the disposal manoeuvre", "{:.3f}".format(natural_impact_percentage), "percent from the natural decay.")
-            return
+            
+            results = {"Space_Debris_Index": total_impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage}
+            return results
 
     # #3 Cases if object has perigee in LEO
     # Case of LEO circular orbit
-    elif apogee_object_op == perigee_object_op:
+    elif operational_orbit.r_a == operational_orbit.r_p:
         print("LEO circular")
-        CF_op = get_characterization_factor(CF_file, apogee_object_op, inc_object_op)
+        CF_op = get_characterization_factor(CF_file, (operational_orbit.r_p - Earth.R), operational_orbit.inc)
         OP_impact = cross_section*mass*CF_op*alpha_param(mass)*op_duration
 
         # TODO switch with natural decay w/o disposal, weighted by PMD success rate of disposal maneuvre ?
@@ -195,7 +199,9 @@ def main():
         disp_maneuver_impact_percentage = 100 - natural_impact_percentage - op_impact_percentage
 
         print("Computed space debris impact score is", "{:.3f}".format(total_impact_score), ".", "{:.3f}".format(op_impact_percentage), "percent from operations", "{:.3f}".format(disp_maneuver_impact_percentage), "percent from disposal manoeuvre", "{:.3f}".format(natural_impact_percentage), "percent from natural decay.")
-        return
+        
+        results = {"Space_Debris_Index": total_impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage}
+        return results
 
     # Cases of elliptical operational orbit
     else:
@@ -226,27 +232,9 @@ def main():
         disp_maneuver_impact_percentage = 100 - natural_impact_percentage - op_impact_percentage
 
         print("Computed space debris impact score is", "{:.3f}".format(total_impact_score), ".", "{:.3f}".format(op_impact_percentage), "percent from operations", "{:.3f}".format(disp_maneuver_impact_percentage), "percent from disposal manoeuvre", "{:.3f}".format(natural_impact_percentage), "percent from natural decay.")
-        return
-
-def open_input_json():
-    """ Open the input json file given as sys.argv[1]
-
-    :return: json input structure
-    :rtype: dict
-    """
-    # Set configuration file as input or manually inserted
-    try:
-        config_file = sys.argv[1]
-    except IndexError:
-        print("Please specify an input .json file in the argv: PATH/FILENAME.json")
-        return None
-        #config_file = SCENARIO_INPUT_JSON
-
-    # Open .json and read mission description
-    with open(config_file) as file:
-        # Open file
-        json = load_json(file)
-    return json
+        
+        results = {"Space_Debris_Index": total_impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage}
+        return results
 
 if __name__ == "__main__":
     main()
