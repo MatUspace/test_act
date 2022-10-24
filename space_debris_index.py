@@ -59,6 +59,17 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
 
     cells in the reduced lifetime have Delta altitude equal to ALTITUDE_INCREMENT 
 
+    :param initial_orbit: Orbit on which the spacecraft starts decaying
+    :type initial_orbit: poliastro.twobody.Orbit
+    :param cross_section: Randomly tumbling cross section
+    :type cross_section: u*m**2
+    :param mass: Mass of the spacecraft
+    :type mass: u*kg
+    :param disposal_time: Transfer time of the disposal manoeuvre
+    :type disposal_time: u*day
+    :param op_time: Duration of the operational phase
+    :type op_time: u*year
+
     Output:
     :cumulated_time [yrs]
     :cumulated natural decay impact [pot. fragments * yrs]
@@ -74,6 +85,7 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
     cumulated_time = op_time + disposal_time.to(u.year)
     total_disposal_time = disposal_time.to(u.year)
     
+    # TODO add decay from above 2000km in case it enters the LEO protected region and add if statement to start impact integration only then ? Might not make sense due to really slow
     # find perigee index (in this case between 0 (200 km) and 36 (2000km), with increment of 50km)
     index_peri = int((round(perigee.value*2)/2 - ALTITUDE_ATMOSPHERE_LIMIT.value)/ALTITUDE_INCREMENT.value)
 
@@ -117,7 +129,7 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
     else:
         # first big assumption that only the eccentricity is decreasing because most braking is done at perigee which lowers apogee, until the orbit is circular. 
         # But it is decreased only after a given time cell_time in the same orbit after which it jumps to the next eccentricity value.
-        # comèuting a new eccentricity (so apogee) after each passage at perigee would be computing intensive I think
+        # computing a new eccentricity (so apogee) after each passage at perigee would be computing intensive I think
         print("natural decay from elliptical orbit")
         while index_ecc > 0:
             cell_time = (reduced_lifetime_file[index_ecc, index_peri] - reduced_lifetime_file[index_ecc - 1, index_peri])/A_over_m.value * u.year
