@@ -9,6 +9,9 @@ from astropy.time import Time
 from poliastro.bodies import Earth
 from space_debris_index import *
 
+SUCCESS = True
+FAIL = False
+
 def main():
 
     print('Creating inputs...')
@@ -18,6 +21,7 @@ def main():
     # TODO include collision avoidance manoeuvres and passivation in the assessment ?
     # TODO add check with propellant mass if maneuvres can be performed (would be solved by using TCAT directly)
     # TODO add other means of manoeuvring else than propulsive (drag sails, tumbling ?)
+    # TODO compute time spent in region B (GEO) ?
 
     mass = 1195 * u.kg
     if mass.value <= 0:
@@ -36,7 +40,7 @@ def main():
     Isp = 210 * u.s
 
     apogee_object_op = 800 * u.km
-    perigee_object_op = 800 * u.km
+    perigee_object_op = 600 * u.km
     if perigee_object_op <= 0:
         raise ValueError("Operational perigee muss be a positive number (km).")
     elif apogee_object_op < perigee_object_op:
@@ -62,11 +66,10 @@ def main():
     EOL_manoeuvre = True
 
     if EOL_manoeuvre == True:
-        # TODO account for Post Mission Disposal (PMD) Success Rate by computing the impacts with and without successful manoeuvres and sum the two
         PMD_success = 0.9
         
         apogee_object_disp = 800 * u.km
-        perigee_object_disp = 600 * u.km
+        perigee_object_disp = 400 * u.km
         if perigee_object_disp <= 0:
             raise ValueError("Disposal perigee muss be a positive number (km).")
         elif apogee_object_disp < perigee_object_disp:
@@ -99,9 +102,9 @@ def main():
     # input .csv file for natural decay
     reduced_lifetime_file = np.genfromtxt(f'reduced_lifetime.csv', delimiter=",", skip_header=2)
 
-    SDI_results = SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration, mean_thrust, Isp, operational_orbit, EOL_manoeuvre, disposal_orbit)
+    SDI_results = SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration, mean_thrust, Isp, operational_orbit, EOL_manoeuvre, disposal_orbit, PMD_success)
 
-def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration, mean_thrust, Isp, operational_orbit, EOL_manoeuvre, disposal_orbit):
+def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration, mean_thrust, Isp, operational_orbit, EOL_manoeuvre, disposal_orbit, PMD_success):
     # Impact score computation
     print('Start finding the orbital case and computing impact score...')
 
@@ -141,7 +144,7 @@ def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration
         # Check disposal orbit
         if (disposal_orbit.r_p - Earth.R) > ALTITUDE_LEO_LIMIT:
             print("Graveyard orbit outside of LEO, no debris impact computed for the disposal phase.")
-            # TODO add decay from above LEO limit ?
+            # TODO add decay from above LEO limit ? No we assume graveyard decays so slowly the spacecraft will no enter LEO protected region
             impact_score = 0 * u.year *u.pot_fragments
             disp_maneuver_impact_percentage = 0
             natural_impact_percentage = 0
@@ -152,15 +155,15 @@ def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration
         else:
             print("Reentry manoeuvre from operational orbit higher than LEO.")
             manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
+            
             # Compute impact of disposal manoeuvre: decompose elliptical orbit and use time_to_anomaly after finding LTAN from position meaning altitude
-            print("Disposal manoeuvre")
             disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass)*(mass - burned_mass)*cross_section
 
-            # TODO switch with natural decay w/o disposal, weighted by PMD success rate of disposal maneuvre ?
-            print("Natural decay")
-            natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration)
+            natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration, SUCCESS)
             
-            total_impact_score = disposal_impact + natural_decay_impact
+            # impact of unsuccessful manoeuvre would be 0 since spacecraft would stay above LEO region
+            total_impact_score = (disposal_impact + natural_decay_impact)*PMD_success
+            print("/!\ no impact computed if no disposal, lower impact if low PMD success rate, only because no CFs outside LEO protected region...")
 
             natural_impact_percentage = natural_decay_impact/total_impact_score*100
             disp_maneuver_impact_percentage = 100 - natural_impact_percentage
@@ -176,25 +179,24 @@ def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration
         CF_op = get_characterization_factor(CF_file, (operational_orbit.r_p - Earth.R), operational_orbit.inc)
         OP_impact = cross_section*mass*CF_op*alpha_param(mass)*op_duration
 
-        # TODO switch with natural decay w/o disposal, weighted by PMD success rate of disposal maneuvre ?
         # disposal manoeuvre
         if EOL_manoeuvre:
-            print("Disposal manoeuvre")
             manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
             # Compute impact of disposal manoeuvre
             disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass) # intermediate impact
+            # natural decay impact after successful EOLM
+            natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration, SUCCESS)
         else:
             disposal_impact = 0 * u.pot_fragments * u.year * u.kg **(-1) * u.m **(-2) # intermediate impact
-            transfer_duration = 0 * u.day
+            natural_decay_impact = 0 * u.pot_fragments * u.year
             burned_mass = 0 * u.kg
 
-        # natural decay impact
-        print("Natural decay")
-        natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration)
+        # Compute impact of natural decay in the case of an unsuccessful end-of-life manoeuvre (EOLM)
+        uns_natural_decay_time, uns_natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, operational_orbit, cross_section, mass, 0 * u.day, op_duration, FAIL)
 
-        total_impact_score = OP_impact + cross_section*(mass - burned_mass)*disposal_impact + natural_decay_impact
+        total_impact_score = OP_impact + (cross_section*(mass - burned_mass)*disposal_impact + natural_decay_impact)*PMD_success + (1-PMD_success)*uns_natural_decay_impact
 
-        natural_impact_percentage = natural_decay_impact/total_impact_score*100
+        natural_impact_percentage = (natural_decay_impact*PMD_success + (1-PMD_success)*uns_natural_decay_impact)/total_impact_score*100
         op_impact_percentage = OP_impact/total_impact_score*100
         disp_maneuver_impact_percentage = 100 - natural_impact_percentage - op_impact_percentage
 
@@ -210,24 +212,24 @@ def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration
         # Compute impact of half elliptical operational orbit, times two for the complete impact of one pass in LEO, times the number of orbits during the operational lifetime
         operational_impact = cross_section*mass*2*elliptical_orbit_decomposition(CF_file, operational_orbit, mass)*op_duration/operational_orbit.period.to(u.year)
 
-        # TODO switch with natural decay w/o disposal, weighted by PMD success rate of disposal maneuvre ?
         # disposal manoeuvre
         if EOL_manoeuvre:
-            print("Disposal manoeuvre")
             manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
             # decompose elliptical disposal  orbit and use time_to_anomaly after finding LTAN from position meaning altitude
-            disposal_impact = cross_section*(mass - burned_mass)*elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass) # intermediate impact
+            disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass) # intermediate impact
+            # natural decay impact after successful EOLM
+            natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration, SUCCESS)
         else:
             disposal_impact = 0 * u.pot_fragments * u.year * u.kg **(-1) * u.m **(-2) # intermediate impact
-            transfer_duration = 0 * u.day
+            natural_decay_impact = 0 * u.pot_fragments * u.year
             burned_mass = 0 * u.kg
         
-        print("Natural decay")
-        natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration)
+        # Compute impact of natural decay in the case of an unsuccessful end-of-life manoeuvre (EOLM)
+        uns_natural_decay_time, uns_natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, operational_orbit, cross_section, mass, 0 * u.day, op_duration, FAIL)
 
-        total_impact_score = operational_impact + disposal_impact + natural_decay_impact
+        total_impact_score = operational_impact + (cross_section*(mass - burned_mass)*disposal_impact + natural_decay_impact)*PMD_success + (1-PMD_success)*uns_natural_decay_impact
 
-        natural_impact_percentage = natural_decay_impact/total_impact_score*100
+        natural_impact_percentage = (natural_decay_impact*PMD_success + (1-PMD_success)*uns_natural_decay_impact)/total_impact_score*100
         op_impact_percentage = operational_impact/total_impact_score*100
         disp_maneuver_impact_percentage = 100 - natural_impact_percentage - op_impact_percentage
 
