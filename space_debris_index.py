@@ -51,7 +51,7 @@ def alpha_param(mass):
 
     return alpha
 
-def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, mass, disposal_time, op_time):
+def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, mass, disposal_time, op_time, type):
     """
     To compute natural decay from a LEO orbit down to the ALTITUDE_ATMOSPHERE_LIMIT
 
@@ -69,6 +69,8 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
     :type disposal_time: u*day
     :param op_time: Duration of the operational phase
     :type op_time: u*year
+    :param type: Type of impact: after successful or unsuccessful EOLM
+    :type type: boolean (True or False)
 
     Output:
     :cumulated_time [yrs]
@@ -174,12 +176,20 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
             perigee = perigee - ALTITUDE_INCREMENT
             index_peri -= 1
     
-    print("Disposal and residual orbital lifetime equals", "{:.3f}".format(total_disposal_time))
-    # flag non compliance with guidelines
-    if total_disposal_time > RESIDUAL_TIME_IADC_GUIDELINE:
-        print("/!\ Disposal and residual orbital lifetime exceeds the IADC guideline of", RESIDUAL_TIME_IADC_GUIDELINE, "years.")
-    if total_disposal_time > RESIDUAL_TIME_FCC_GUIDELINE:
-        print("/!\ Disposal and residual orbital lifetime exceeds the FCC guideline of", RESIDUAL_TIME_FCC_GUIDELINE, "years.")
+    if type:
+        print("Disposal and residual orbital lifetime after successful EOLM equals", "{:.3f}".format(total_disposal_time))
+        # flag non compliance with guidelines
+        if total_disposal_time > RESIDUAL_TIME_IADC_GUIDELINE:
+            print("/!\ Disposal and residual orbital lifetime after successful EOLM exceeds the IADC guideline of", RESIDUAL_TIME_IADC_GUIDELINE, "years.")
+        if total_disposal_time > RESIDUAL_TIME_FCC_GUIDELINE:
+            print("/!\ Disposal and residual orbital lifetime after successful EOLM exceeds the FCC guideline of", RESIDUAL_TIME_FCC_GUIDELINE, "years.")
+    else:
+        print("Disposal and residual orbital lifetime due to unsuccessful EOLM equals", "{:.3f}".format(total_disposal_time))
+        # flag non compliance with guidelines
+        if total_disposal_time > RESIDUAL_TIME_IADC_GUIDELINE:
+            print("/!\ Disposal and residual orbital lifetime due to unsuccessful EOLM exceeds the IADC guideline of", RESIDUAL_TIME_IADC_GUIDELINE, "years.")
+        if total_disposal_time > RESIDUAL_TIME_FCC_GUIDELINE:
+            print("/!\ Disposal and residual orbital lifetime due to unsuccessful EOLM exceeds the FCC guideline of", RESIDUAL_TIME_FCC_GUIDELINE, "years.")
 
     return cumulated_time, decay_orbit_impact
 
