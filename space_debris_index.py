@@ -91,6 +91,11 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
     # find perigee index (in this case between 0 (200 km) and 36 (2000km), with increment of 50km)
     index_peri = int((round(perigee.value*2)/2 - ALTITUDE_ATMOSPHERE_LIMIT.value)/ALTITUDE_INCREMENT.value)
 
+    if index_peri < 0:
+        print("Direct reentry, no impact from natural decay.")
+        decay_orbit_impact = 0 * u.year * u.pot_fragments
+        return cumulated_time, decay_orbit_impact
+
     # find eccentricity index
     if ecc >= 0.8:
         index_ecc = 7
@@ -197,6 +202,10 @@ def elliptical_orbit_decomposition(CF_file, transfer_orbit, mass):
     """ To decompose the trajectory in time spent in different orbital cell (altitude and inclination)
 
     Depends on global parameters defined by the characterization factors available
+
+    /!\ For now only computes score when transfer orbit comes from higher to lower altitude
+    TODO add case when transfer orbit is to bring object higher (eg. graveyard orbit > 2000km from within LEO)
+    If switch at the beginning to assign global constant to condition values ? Delta altitude = +/- ALTITUDE_INCREMENT, integration boundary = ALTITUDE_ATMOSPHERE_LIMIT or ALTITUDE_LEO_LIMIT...
 
     return
         (yr*potential_fragments/m**2 /kg) intermediate impact score
