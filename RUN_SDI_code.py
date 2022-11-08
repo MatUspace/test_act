@@ -159,7 +159,10 @@ def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration
             # Compute impact of disposal manoeuvre: decompose elliptical orbit and use time_to_anomaly after finding LTAN from position meaning altitude
             disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass)*(mass - burned_mass)*cross_section
 
-            natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration, SUCCESS)
+            if disposal_orbit.r_p < ALTITUDE_ATMOSPHERE_LIMIT:
+                natural_decay_impact = 0 * u.year *u.pot_fragments
+            else:
+                natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration, SUCCESS)
             
             # impact of unsuccessful manoeuvre would be 0 since spacecraft would stay above LEO region
             total_impact_score = (disposal_impact + natural_decay_impact)*PMD_success
@@ -184,14 +187,17 @@ def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration
             manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
             # Compute impact of disposal manoeuvre
             disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass) # intermediate impact
-            # natural decay impact after successful EOLM
-            natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration, SUCCESS)
+            if disposal_orbit.r_p < ALTITUDE_ATMOSPHERE_LIMIT:
+                natural_decay_impact = 0 * u.year *u.pot_fragments
+            else:
+                # natural decay impact after successful EOLM
+                natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration, SUCCESS)
         else:
             disposal_impact = 0 * u.pot_fragments * u.year * u.kg **(-1) * u.m **(-2) # intermediate impact
             natural_decay_impact = 0 * u.pot_fragments * u.year
             burned_mass = 0 * u.kg
 
-        # Compute impact of natural decay in the case of an unsuccessful end-of-life manoeuvre (EOLM)
+        # Compute impact of natural decay in the case of no EOLM or an unsuccessful end-of-life manoeuvre (EOLM)
         uns_natural_decay_time, uns_natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, operational_orbit, cross_section, mass, 0 * u.day, op_duration, FAIL)
 
         total_impact_score = OP_impact + (cross_section*(mass - burned_mass)*disposal_impact + natural_decay_impact)*PMD_success + (1-PMD_success)*uns_natural_decay_impact
@@ -217,14 +223,17 @@ def SDI_compute(CF_file, reduced_lifetime_file, mass, cross_section, op_duration
             manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
             # decompose elliptical disposal  orbit and use time_to_anomaly after finding LTAN from position meaning altitude
             disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass) # intermediate impact
-            # natural decay impact after successful EOLM
-            natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration, SUCCESS)
+            if disposal_orbit.r_p < ALTITUDE_ATMOSPHERE_LIMIT:
+                natural_decay_impact = 0 * u.year *u.pot_fragments
+            else:
+                # natural decay impact after successful EOLM
+                natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass, transfer_duration, op_duration, SUCCESS)
         else:
             disposal_impact = 0 * u.pot_fragments * u.year * u.kg **(-1) * u.m **(-2) # intermediate impact
             natural_decay_impact = 0 * u.pot_fragments * u.year
             burned_mass = 0 * u.kg
         
-        # Compute impact of natural decay in the case of an unsuccessful end-of-life manoeuvre (EOLM)
+        # Compute impact of natural decay in the case of no EOLM or an unsuccessful end-of-life manoeuvre (EOLM)
         uns_natural_decay_time, uns_natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, operational_orbit, cross_section, mass, 0 * u.day, op_duration, FAIL)
 
         total_impact_score = operational_impact + (cross_section*(mass - burned_mass)*disposal_impact + natural_decay_impact)*PMD_success + (1-PMD_success)*uns_natural_decay_impact
