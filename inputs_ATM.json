@@ -1,0 +1,17 @@
+{
+  "launcher": "Vega_C",
+  "engine": "Z40",
+  "number_of_launch_es": 1,
+
+  "launcher_trajectory": null,
+  "engine_thrust_curve": null,
+
+  "number_of_engine_s": 1,
+  "prop_type": "APCP",
+  "Isp": 295,
+
+  "ignition_timestamp": 150,
+  "cutoff_timestamp": 267,
+
+  "plotting": true
+}

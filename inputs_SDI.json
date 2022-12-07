@@ -1,0 +1,38 @@
+{
+  "starting_epoch": "2018-01-01 12:00:00",
+  "op_ending_epoch": "2026-01-01 12:00:00",
+
+  "mass": 1250, 
+  "cross_section": 15.5,
+  "mean_thrust": 8,
+  "Isp": 210,
+  "number_of_launch_es": 1,
+
+  "apogee_object_op": 800,
+  "perigee_object_op": 800,
+  "inc_object_op": 98,
+
+  "EOL_manoeuvre": false,
+  "PMD_success": 0.9,
+  "apogee_object_disp": 800,
+  "perigee_object_disp": 400,
+  "inc_object_disp": 98,
+  
+  "ADR_stage": true,
+  "m_ADR": 200, 
+  "ADR_cross_section": 9,
+  "ADR_mean_thrust": 8,
+  "ADR_Isp": 300,
+  "ADR_manoeuvre_success": 0.999,
+  "ADR_capture_success": 0.9,
+
+  "m_debris": 100,
+  "debris_cross_section": 9,
+  "apogee_debris": 1000,
+  "perigee_debris": 900,
+  "inc_debris": 98,
+
+  "apogee_debris_removal": 200,
+  "perigee_debris_removal": 200,
+  "inc_debris_removal": 98
+}
