@@ -1,5 +1,5 @@
 # Created:          12.07.2022
-# Last Revision:    12.07.2022
+# Last Revision:    07.12.2022
 # Authors:          Mathieu Udriot
 # Emails:           mathieu.udriot@epfl.ch
 # Description:      Script for computation needed for the space debris index to be used in ACT
@@ -20,7 +20,8 @@ TIME_INTERVAL_LIMIT = 200 * u.year
 RESIDUAL_TIME_IADC_GUIDELINE = 25 * u.year
 RESIDUAL_TIME_FCC_GUIDELINE = 5 * u.year
 
-PRINT_BOOL = False
+# To help debugging
+print_bool = False
 
 """ A space object can be a spacecraft (servicers, upper stages, kick stages, satellites (active or defunct)) or any type of debris
 
@@ -87,9 +88,13 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
     cumulated_time = op_time + disposal_time.to(u.year)
     total_disposal_time = disposal_time.to(u.year)
     
-    # TODO add decay from above 2000km in case it enters the LEO protected region and add if statement to start impact integration only then ? Might not make sense due to really slow
     # find perigee index (in this case between 0 (200 km) and 36 (2000km), with increment of 50km)
     index_peri = int((round(perigee.value*2)/2 - ALTITUDE_ATMOSPHERE_LIMIT.value)/ALTITUDE_INCREMENT.value)
+
+    if index_peri < 0:
+        print("Direct reentry, no impact from natural decay.")
+        decay_orbit_impact = 0 * u.year * u.pot_fragments
+        return cumulated_time, decay_orbit_impact
 
     # find eccentricity index
     if ecc >= 0.8:
@@ -111,7 +116,7 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
 
     # case of a circular orbit, assumed to stay circular, decay of time
     if ecc <0.01:
-        print("natural decay from circular orbit")
+        print("--\n natural decay from circular orbit")
         while index_peri > 0: # so it doesn't read first column
             
             cell_time = (reduced_lifetime_file[0, index_peri] - reduced_lifetime_file[0, index_peri - 1])/A_over_m.value * u.year
@@ -122,7 +127,8 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
             if cumulated_time > TIME_INTERVAL_LIMIT:
                 decay_orbit_impact += get_characterization_factor(CF_file, perigee, inc)*(TIME_INTERVAL_LIMIT - (cumulated_time - cell_time))*alpha_param(mass)*cross_section*mass
                 print("/!\ Time interval limit reached !")
-                break
+                disposal_print(type, total_disposal_time)
+                return cumulated_time, decay_orbit_impact
             else:
                 decay_orbit_impact += get_characterization_factor(CF_file, perigee, inc)*cell_time*alpha_param(mass)*cross_section*mass
 
@@ -132,7 +138,7 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
         # first big assumption that only the eccentricity is decreasing because most braking is done at perigee which lowers apogee, until the orbit is circular. 
         # But it is decreased only after a given time cell_time in the same orbit after which it jumps to the next eccentricity value.
         # computing a new eccentricity (so apogee) after each passage at perigee would be computing intensive I think
-        print("natural decay from elliptical orbit")
+        print("--\n natural decay from elliptical orbit")
         while index_ecc > 0:
             cell_time = (reduced_lifetime_file[index_ecc, index_peri] - reduced_lifetime_file[index_ecc - 1, index_peri])/A_over_m.value * u.year
             
@@ -152,7 +158,8 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
             if cumulated_time > TIME_INTERVAL_LIMIT:
                 decay_orbit_impact += elliptical_orbit_decomposition(CF_file, elliptical_orbit, mass)*cross_section*mass*2*(TIME_INTERVAL_LIMIT - (cumulated_time - cell_time))/elliptical_orbit.period.to(u.year)
                 print("/!\ Time interval limit reached !")
-                break
+                disposal_print(type, total_disposal_time)
+                return cumulated_time, decay_orbit_impact
             else:
                 decay_orbit_impact += elliptical_orbit_decomposition(CF_file, elliptical_orbit, mass)*cross_section*mass*2*cell_time/elliptical_orbit.period.to(u.year)
             
@@ -169,13 +176,18 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
             if cumulated_time > TIME_INTERVAL_LIMIT:
                 decay_orbit_impact += get_characterization_factor(CF_file, perigee, inc)*(TIME_INTERVAL_LIMIT - cumulated_time - cell_time)*alpha_param(mass)*cross_section*mass
                 print("/!\ Time interval limit reached !")
-                break
+                disposal_print(type, total_disposal_time)
+                return cumulated_time, decay_orbit_impact
             else:
                 decay_orbit_impact += get_characterization_factor(CF_file, perigee, inc)*cell_time*alpha_param(mass)*cross_section*mass
 
             perigee = perigee - ALTITUDE_INCREMENT
             index_peri -= 1
-    
+
+    disposal_print(type, total_disposal_time)
+    return cumulated_time, decay_orbit_impact
+
+def disposal_print(type, total_disposal_time):    
     if type:
         print("Disposal and residual orbital lifetime after successful EOLM equals", "{:.3f}".format(total_disposal_time))
         # flag non compliance with guidelines
@@ -190,8 +202,6 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
             print("/!\ Disposal and residual orbital lifetime due to unsuccessful EOLM exceeds the IADC guideline of", RESIDUAL_TIME_IADC_GUIDELINE, "years.")
         if total_disposal_time > RESIDUAL_TIME_FCC_GUIDELINE:
             print("/!\ Disposal and residual orbital lifetime due to unsuccessful EOLM exceeds the FCC guideline of", RESIDUAL_TIME_FCC_GUIDELINE, "years.")
-
-    return cumulated_time, decay_orbit_impact
 
 def elliptical_orbit_decomposition(CF_file, transfer_orbit, mass):
     """ To decompose the trajectory in time spent in different orbital cell (altitude and inclination)
@@ -210,11 +220,11 @@ def elliptical_orbit_decomposition(CF_file, transfer_orbit, mass):
         nu_1 = get_nu(transfer_orbit.a, transfer_orbit.ecc, altitude_temp + Earth.R)
     else:
         altitude_temp = apogee_transfer
-        nu_1 = 179*np.pi/180 * u.rad
+        nu_1 = 179.99*np.pi/180 * u.rad # to avoid being exactly at pi rad which generates 0 s of time_to_anomaly
 
     nu_temp = nu_1
 
-    t_temp = Orbit.time_to_anomaly(transfer_orbit, nu_temp)
+    t_temp = Orbit.time_to_anomaly(transfer_orbit, nu_temp) # time_to_anomaly based on time since periapsis
     impact_score_temp = 0 * u.year* u.m **(-2)*u.pot_fragments
 
     # integrates impact from apogee to atmospheric limit or perigee (so during maximum half an ellipse)
@@ -225,8 +235,8 @@ def elliptical_orbit_decomposition(CF_file, transfer_orbit, mass):
         Delta_t = Delta_t.to(u.year)
         impact_score_temp = impact_score_temp + Delta_t*get_characterization_factor(CF_file, altitude_temp, transfer_orbit.inc)
 
-        if PRINT_BOOL:
-            print("altitude", altitude_temp, ", anomaly nu", nu_temp, ", altitude_next", altitude_temp - ALTITUDE_INCREMENT, ", nu next", nu_next, ", Delta t", Delta_t.to(u.s))
+        if print_bool:
+            print("DOWN: altitude", altitude_temp, ", anomaly nu", nu_temp, ", altitude_next", altitude_temp - ALTITUDE_INCREMENT, ", nu next", nu_next, ", Delta t", Delta_t.to(u.s))
 
         nu_temp = nu_next
         t_temp = t_next
@@ -237,10 +247,62 @@ def elliptical_orbit_decomposition(CF_file, transfer_orbit, mass):
     t_next = Orbit.time_to_anomaly(transfer_orbit, nu_next)
     Delta_t = t_temp - t_next
     Delta_t = Delta_t.to(u.year)
-    if PRINT_BOOL:
-        print("final altitude", altitude_temp, ", anomaly nu", nu_temp, ", altitude_next", max(ALTITUDE_ATMOSPHERE_LIMIT, perigee_transfer), ", nu next", nu_next, ", Delta t", Delta_t.to(u.s))
 
     impact_score_temp = impact_score_temp + Delta_t*get_characterization_factor(CF_file, altitude_temp, transfer_orbit.inc)
+    
+    if print_bool:
+        print("before last altitude", altitude_temp, ", anomaly nu", nu_temp, ", final altitude", max(ALTITUDE_ATMOSPHERE_LIMIT, perigee_transfer), ", nu next", nu_next, ", Delta t", Delta_t.to(u.s))
+
+    # mass assumed not to change so same alpha parameter applies to all contributions
+    return impact_score_temp*alpha_param(mass)
+
+def elliptical_orbit_decomposition_up(CF_file, transfer_orbit, mass):
+    """ To decompose the trajectory in time spent in different orbital cell (altitude and inclination), when increasing semi-major axis (disposal orbit higher than operational one)
+
+    Depends on global parameters defined by the characterization factors available
+
+    return
+        (yr*potential_fragments/m**2 /kg) intermediate impact score
+    """
+
+    apogee_transfer = (transfer_orbit.r_a - Earth.R)
+    perigee_transfer = (transfer_orbit.r_p - Earth.R)
+
+    altitude_temp = perigee_transfer 
+    nu_temp = 0  * u.rad
+
+    t_temp = Orbit.time_to_anomaly(transfer_orbit, nu_temp) # time_to_anomaly based on time since periapsis
+    impact_score_temp = 0 * u.year* u.m **(-2)*u.pot_fragments
+
+    # integrates impact from perigee to LEO limit or apogee (so during maximum half an ellipse)
+    #while round((altitude_temp + ALTITUDE_INCREMENT).value) * u.km < min(ALTITUDE_LEO_LIMIT, apogee_transfer):
+    while altitude_temp + ALTITUDE_INCREMENT < min(ALTITUDE_LEO_LIMIT, apogee_transfer):
+        nu_next = get_nu(transfer_orbit.a, transfer_orbit.ecc, altitude_temp + ALTITUDE_INCREMENT + Earth.R)
+        t_next = Orbit.time_to_anomaly(transfer_orbit, nu_next)
+        Delta_t = t_next - t_temp
+        Delta_t = Delta_t.to(u.year)
+        impact_score_temp = impact_score_temp + Delta_t*get_characterization_factor(CF_file, altitude_temp, transfer_orbit.inc)
+
+        if print_bool:
+            print("UP: altitude", altitude_temp, ", anomaly nu", nu_temp, ", altitude_next", altitude_temp + ALTITUDE_INCREMENT, ", nu next", nu_next, ", Delta t", Delta_t.to(u.s))
+
+        nu_temp = nu_next
+        t_temp = t_next
+        altitude_temp = altitude_temp + ALTITUDE_INCREMENT
+
+    # Last cell, Delta_t time might be smaller
+    if apogee_transfer > ALTITUDE_LEO_LIMIT:
+        nu_next = get_nu(transfer_orbit.a, transfer_orbit.ecc, ALTITUDE_LEO_LIMIT + Earth.R)
+    else:
+        nu_next = 179.99*np.pi/180 * u.rad # to avoid being exactly at pi rad which generates 0 s of time_to_anomaly
+    t_next = Orbit.time_to_anomaly(transfer_orbit, nu_next)
+    Delta_t = t_next - t_temp
+    Delta_t = Delta_t.to(u.year)
+    
+    impact_score_temp = impact_score_temp + Delta_t*get_characterization_factor(CF_file, altitude_temp, transfer_orbit.inc)
+    
+    if print_bool:
+        print("before last altitude", altitude_temp, ", anomaly nu", nu_temp, ", final altitude", min(ALTITUDE_LEO_LIMIT, apogee_transfer), ", nu next", nu_next, ", Delta t", Delta_t.to(u.s))
 
     # mass assumed not to change so same alpha parameter applies to all contributions
     return impact_score_temp*alpha_param(mass)
@@ -284,7 +346,7 @@ def get_characterization_factor(CF_file, altitude, inclination):
     # .csv ignores first row (header) but there is a first column with the inclination values
     characterization_factor = CF_file[index_inc, index_alt + 1] * u.m **(-2)*u.pot_fragments
     
-    if PRINT_BOOL:
+    if print_bool:
         print("CF:", characterization_factor)
 
     return characterization_factor
