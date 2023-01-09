@@ -8,8 +8,8 @@
             "name": "Python: Module",
             "type": "python",
             "request": "launch",
-            //"module": "RUN_SDI_code",
-            "module": "atm_csv_reader",
+            "module": "sdi_run_code",
+            //"module": "atm_run_code",
             "justMyCode": true
         }
     ]

@@ -31,47 +31,49 @@ PATH_ATM_RESULTS = "atm_results/"
 
 INTERPOLATION_PLOT_STEP = 0.1
 
-plotting = False
+plotting = True
 
 # local inputs to define launcher and engine
 number_of_launch_es = 1
 
-# launcher = ["Vega_C", "Vega_C", "Vega_C"]
-# engine = ["P120", "Z40", "Z9"]
+launcher = ["Vega_C", "Vega_C", "Vega_C"]
+engine = ["P120", "Z40", "Z9"]
 # launcher = ["Ariane_5", "Ariane_5", "Ariane_5"]
 # engine = ["Vulcain", "MPS", "HM7B"]
-launcher = ["Themis_S1_reuse", "Themis_T3"]
-engine = ["T3_S1", "T3_S2"]
+# launcher = ["Themis_S1_reuse", "Themis_T3"]
+# engine = ["T3_S1", "T3_S2"]
 
 # For Vega C
-# number_of_engine_s = [1, 1, 1] # this scales the emissions too.
-# prop_type = ['APCP', 'APCP', 'APCP']  # prop_type can be LOx/RP1, LOx/LH2, LOx/LCH4, NTO/UDMH, or APCP
-# Isp = [278.5 * u.s, 295 * u.s, 296 * u.s]
+number_of_engine_s = [1, 1, 1] # this scales the emissions too.
+prop_type = ['APCP', 'APCP', 'APCP']  # prop_type can be LOx/RP1, LOx/LH2, LOx/LCH4, NTO/UDMH, or APCP
+Isp = [278.5 * u.s, 295 * u.s, 296 * u.s]
 # For Ariane 5
 # number_of_engine_s = [1, 2, 1] # this scales the emissions too.
 # prop_type = ['LOx/LH2', 'APCP', 'LOx/LH2']  # prop_type can be LOx/RP1, LOx/LH2, LOx/LCH4, NTO/UDMH, or APCP
 # Isp = [431 * u.s, 270 * u.s, 446 * u.s] 
 # For Themis T3
-number_of_engine_s = [3, 1] # this scales the emissions too.
-prop_type = ['LOx/LCH4', 'LOx/LCH4']  # prop_type can be LOx/RP1, LOx/LH2, LOx/LCH4, NTO/UDMH, or APCP
-Isp = [320 * u.s, 350 * u.s]
+# number_of_engine_s = [3, 1] # this scales the emissions too.
+# prop_type = ['LOx/LCH4', 'LOx/LCH4']  # prop_type can be LOx/RP1, LOx/LH2, LOx/LCH4, NTO/UDMH, or APCP
+# Isp = [320 * u.s, 350 * u.s]
 
 # ignition and cutoff timestamps (here for Vega C)
-# ignition_timestamp = [0 *u.s, 150 *u.s, 282 * u.s]
-# cutoff_timestamp = [133 *u.s , 267 *u.s, 442 *u.s]
+ignition_timestamp = [0 *u.s, 150 *u.s, 282 * u.s]
+cutoff_timestamp = [133 *u.s , 267 *u.s, 442 *u.s]
 # ignition and cutoff timestamps (here for Ariane 5)
 # ignition_timestamp = [0 *u.s, 7 *u.s, 580 * u.s]
 # cutoff_timestamp = [531 *u.s, 142 *u.s, 1525 *u.s]
 # ignition and cutoff timestamps (here for Themis T3 reusable)
-ignition_timestamp = [0 *u.s, 200 *u.s]
-cutoff_timestamp = [325 *u.s, 372.8 *u.s]
+# ignition_timestamp = [0 *u.s, 200 *u.s]
+# cutoff_timestamp = [325 *u.s, 372.8 *u.s]
 
 # NOTE assumption: the engine has only 1 ignition and 1 cutoff. Workaround: define a thrust curve that goes to 0 during ballistic time and goes "turns on" again 
 # have the boundaries defined for the total duration of the thrust curve
 
+# TODO add switch if daytime or nightime launch ? need to know effect on ozone depletion
+
 def atm_main(launcher, engine, number_of_engine_s, prop_type, Isp, ignition_timestamp, cutoff_timestamp, number_of_launch_es, plotting):
     
-    # creating list of layer classes for the atmosphere
+    # creating a list of layer classes for the global atmosphere (cumulating the emissions of every engines)
     global_low_troposphere = layer("Low_troposphere", ATM_EARTH_SURFACE, ATM_LIM_LOW_TROPOSPHERE)
     global_high_troposphere = layer("High_troposphere", ATM_LIM_LOW_TROPOSPHERE, ATM_LIM_OZONE_LOW)
     global_ozone_layer = layer("Ozone_layer", ATM_LIM_OZONE_LOW, ATM_LIM_OZONE_HIGH)
@@ -124,11 +126,11 @@ def atm_main(launcher, engine, number_of_engine_s, prop_type, Isp, ignition_time
             fig, ax = pyplot.subplots(figsize=(5, 2.7), layout='constrained')
             ax.plot(raw_thrust_curve[:, 0], raw_m_dot_over_time, 'ro', label = "raw")
             ax.plot(x_mass_flow, y_mass_flow, 'b--', label = "Interpolation")
-            ax.set_ylabel("propellant mass flow [tons / s]")
+            ax.set_ylabel("propellant mass flow [kg / s]")
             ax.set_xlabel("t [s]")
             ax.set_title("Propellant mass flow from thrust curve")
             ax.legend()
-            fig.savefig(PATH_ATM_RESULTS + 'atm_' + engine + '_mass_flow.png', bbox_inches='tight', dpi=100)
+            fig.savefig(PATH_ATM_RESULTS + 'atm_' + engine[run] + '_mass_flow.png', bbox_inches='tight', dpi=100)
 
         if x_mass_flow[-1] - x_mass_flow[0] != (cutoff_timestamp[run] - ignition_timestamp[run]).value:
             raise ValueError("Burn duration inconsistant between ignition and cutoff timestamps, and thrust curve duration (thrust curve not long enough).")
@@ -138,7 +140,7 @@ def atm_main(launcher, engine, number_of_engine_s, prop_type, Isp, ignition_time
         
         propulsion_type_entries = np.genfromtxt(f'atm_emissions_per_propellant.csv', delimiter=",", skip_header=2, usecols=0, dtype=str)
 
-        # creating list of layer classes for the atmosphere
+        # creating list of layer classes for the atmosphere (reset to 0  for each engine)
         low_troposphere = layer("Low_troposphere", ATM_EARTH_SURFACE, ATM_LIM_LOW_TROPOSPHERE)
         high_troposphere = layer("High_troposphere", ATM_LIM_LOW_TROPOSPHERE, ATM_LIM_OZONE_LOW)
         ozone_layer = layer("Ozone_layer", ATM_LIM_OZONE_LOW, ATM_LIM_OZONE_HIGH)
@@ -249,7 +251,7 @@ def find_propellant_mass_flow(thrust_curve, Isp):
     """
     m_dot_over_time = list()
     for i in range(len(thrust_curve[:, 0])):
-        m_dot_over_time.append(thrust_curve[i, 1] * 1000 / Isp.value / g0.value) # convert to N from kN
+        m_dot_over_time.append(thrust_curve[i, 1] * 1000 / Isp.value / g0.value) # convert to N from kN, N / s / (m/s2) = kg / s
     return m_dot_over_time
 
 def integrate_mass_flow(m_dot_over_time, ignition_timestamp, cutoff_timestamp,  t_0, t_f, current_layer, propulsion_type_entries, emissions_table, prop_type, number_of_engine_s):
@@ -327,13 +329,13 @@ class layer:
             writer.writerow(data)
 
     def plot_emissions_bar_chart(self, header, engine, launcher, number_of_launch_es):
-        if self.affected == True and plotting:
+        if self.affected == True:
             y_pos = list(np.arange(len(header)-1))
             fig, ax = pyplot.subplots(figsize=(5, 2.7))
             ax.barh(y_pos, self.stored_emissions)
             ax.set_xlabel("Emissions [kg]")
             pyplot.setp(ax, yticks = y_pos, yticklabels = header[1:])
-            ax.set_title("Emissions in " f"{self.name} by {engine} engine, on {launcher} launcher, for " f"{number_of_launch_es} lauunch(es).")
+            ax.set_title("Emissions in " f"{self.name} by {engine} engine, on {launcher} launcher, for " f"{number_of_launch_es} launch(es).")
             fig.savefig(PATH_ATM_RESULTS + 'atm_' + launcher + '_' + engine + '_' + self.name + '_.png', bbox_inches='tight', dpi=100)
 
 atm_main(launcher, engine, number_of_engine_s, prop_type, Isp, ignition_timestamp, cutoff_timestamp, number_of_launch_es, plotting)
