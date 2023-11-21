@@ -97,26 +97,26 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
         decay_orbit_impact = 0 * u.year * u.pot_fragments
         return cumulated_time, decay_orbit_impact
 
-    # find eccentricity index
-    if ecc >= 0.8:
+    # find eccentricity index (assign index to ecc with the threshold set at the medium between the eccentricity existing in the file sdi_reduced_lifetime.csv)
+    if ecc >= 0.6:
         index_ecc = 7
-    elif ecc >= 0.4:
+    elif ecc >= 0.3:
         index_ecc = 6
-    elif ecc >= 0.2:
+    elif ecc >= 0.15:
         index_ecc = 5
-    elif ecc >= 0.1:
+    elif ecc >= 0.075:
         index_ecc = 4
-    elif ecc >= 0.05:
+    elif ecc >= 0.035:
         index_ecc = 3
-    elif ecc >= 0.02:
+    elif ecc >= 0.015:
         index_ecc = 2
-    elif ecc >= 0.01:
+    elif ecc >= 0.005:
         index_ecc = 1
     else:
         index_ecc = 0
 
     # case of a circular orbit, assumed to stay circular, decay of time
-    if ecc <0.01:
+    if ecc <0.005:
         print("--\n natural decay from circular orbit")
         while index_peri > 0: # so it doesn't read first column
             
@@ -148,6 +148,7 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
 
             periapsis = perigee + Earth.R
             apoapsis = periapsis*(1+ecc)/(1-ecc) 
+            print("Peri:", perigee, " Apo:", apoapsis - Earth.R, " cell_time:", cell_time)
             a = (periapsis + apoapsis)/2 #semi-major axis of ellipse
 
             elliptical_orbit = Orbit.from_classical(Earth, 
@@ -155,8 +156,8 @@ def natural_decay(reduced_lifetime_file, CF_file, initial_orbit, cross_section, 
                                             ecc, 
                                             inc, 
                                             0. * u.deg,
-                                            0. * u.deg,
-                                            180. * u.deg)
+                                            90. * u.deg,
+                                            0. * u.deg)
 
             if cumulated_time > TIME_INTERVAL_LIMIT:
                 decay_orbit_impact += elliptical_orbit_decomposition(CF_file, elliptical_orbit, mass)*cross_section*mass*2*(TIME_INTERVAL_LIMIT - (cumulated_time - cell_time))/elliptical_orbit.period.to(u.year)
