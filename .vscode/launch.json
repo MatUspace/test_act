@@ -9,7 +9,7 @@
             "type": "python",
             "request": "launch",
             "module": "sdi_run_code",
-            //"module": "atm_run_code",
+            //"module": "atm_run_code_single",
             "justMyCode": true
         }
     ]

@@ -1,5 +1,5 @@
 # Created:          15.07.2022
-# Last Revision:    07.12.2022
+# Last Revision:    22.11.2023
 # Authors:          Mathieu Udriot
 # Emails:           mathieu.udriot@epfl.ch
 # Description:      Script for computation needed for the space debris index to be used in ACT, inputs
@@ -13,50 +13,196 @@ SUCCESS = True
 FAIL = False
 
 # local inputs
-starting_epoch = Time("2018-01-01 12:00:00", scale="tdb")
-op_duration = 0.1 *u.year # Sentinel 3B: 12.5
+starting_epoch = Time("2035-01-01 12:00:00", scale="tdb")
+# op duration : Sentinel 3B: 12.5, LV: 0.1
+# mass: A5: 4640; AVUM+: 850; S2: 6200, sentinel 3B: 1167 kg (GreenSat): 1255.6 kg
+# cross section : Ariane 5: 31.22 m2; Vega C: 5.32 m2; Themis T3: 25.3 m2; Sentinel 3B: 15.55
+# thrust : Vega C: 2420 N ; A5: 67000 N; T3 S2 : 1200000 N (or smaller because we consider venting/passivation used as boost ? see ref) S3B: 8 N
+# Isp: Vega C: 327 s ; A5: 446 s; T3 S2 : 350 s, sentinel 3B: 339 s (GreenSat): 359 s
+# orbit  Vega C and Themis: 500x500; A5: 35943x250; S3B: 800x800
+# inc: Vega C: 88; Themis: 6; A5: 6; S3B: 98.6
+# disposal orbit: A5: 35500 x 200; Vega C: 500 x 200; T3: 200x50; S3B: 800 km
+# perigee disp: S3B: 615 (greensat): 165.9 km
+# inc disp: Vega C: 88; Themis: 6; A5: 6; S3B: 98.6
 
-mass = 850 * u.kg # at end of mission (= dry + prop for EOLM): A5: 4640; AVUM+: 850; S2: 6200, sentinel 3B: 1167 kg (GreenSat): 1255.6 kg
-cross_section = 5.32 * u.m ** 2 # TODO the cross section can be computed from the CROC tool (from ESA) based on the dimensions --> what is possible to do ?
-# Ariane 5: 31.22 m2; Vega C: 5.32 m2; Themis T3: 25.3 m2; Sentinel 3B: 15.55
-mean_thrust = 2420 * u.N # /!\ in ACT, thrust is in kN # Vega C: 2420 N ; A5: 67000 N; T3 S2 : 1200000 N (or smaller because we consider venting/passivation used as boost ? see ref) S3B: 8 N
-Isp = 327 * u.s # Vega C: 327 s ; A5: 446 s; T3 S2 : 350 s 
+# Ariane 5
+"""op_duration = 3 / 365 * u.year
+mass = 4640 * u.kg  # at end of mission (= dry + prop for EOLM):
+cross_section = (
+    31.22 * u.m**2
+)  # TODO the cross section can be computed from the CROC tool (from ESA) based on the dimensions --> what is possible to do ?
+mean_thrust = 67000 * u.N  # /!\ in ACT, thrust is in kN
+Isp = 446 * u.s
 number_of_launch_es = 1
-
-apogee_object_op = 500 * u.km # Vega C and Themis: 500x500; A5: 35943x250; S3B: 800x800
-perigee_object_op = 500 * u.km
-inc_object_op = 88 * u.deg # Vega C: 88; Themis: 6; A5: 6; S3B: 98.6 km
-
+apogee_object_op = 35943 * u.km
+perigee_object_op = 250 * u.km
+inc_object_op = 6 * u.deg
 EOL_manoeuvre = True
-PMD_success = 0.9
-        
-apogee_object_disp = 500 * u.km # A5: 35500x200; Vega C: 500x200; T3: 200x50; S3B: 800 km
-perigee_object_disp = 200 * u.km # S3B: 615 (greensat): 165.9 km
-inc_object_disp = 88 * u.deg # Vega C: 88; Themis: 6; A5: 6; S3B: 98.6
+PMD_success = 1
+apogee_object_disp = 35500 * u.km
+perigee_object_disp = 201 * u.km
+inc_object_disp = 6 * u.deg"""
 
-ADR_stage = True
-m_ADR = 620 * u.kg # = wet mass (because no fuel consumed before insertion)
-ADR_cross_section = 3.75 * u.m ** 2
-ADR_mean_thrust = 24 * u.N # /!\ in ACT, thrust is in kN
+# Sentinel 3B
+"""op_duration = 12.5 * u.year
+mass = 1167 * u.kg  # at end of mission (= dry + prop for EOLM):
+cross_section = (
+    15.55 * u.m**2
+)  # TODO the cross section can be computed from the CROC tool (from ESA) based on the dimensions --> what is possible to do ?
+mean_thrust = 8 * u.N  # /!\ in ACT, thrust is in kN
+Isp = 339 * u.s
+number_of_launch_es = 1
+apogee_object_op = 800 * u.km
+perigee_object_op = 800 * u.km
+inc_object_op = 98.6 * u.deg
+EOL_manoeuvre = True
+PMD_success = 1
+apogee_object_disp = 800 * u.km
+perigee_object_disp = 615 * u.km
+inc_object_disp = 98.6 * u.deg"""
+
+# Sentinel 3B ecodesigned greensat
+""" op_duration = 12.5 * u.year
+mass = 1255.6 * u.kg  # at end of mission (= dry + prop for EOLM):
+cross_section = (
+    15.55 * u.m**2
+)  # TODO the cross section can be computed from the CROC tool (from ESA) based on the dimensions --> what is possible to do ?
+mean_thrust = 8 * u.N  # /!\ in ACT, thrust is in kN
+Isp = 359 * u.s
+number_of_launch_es = 1
+apogee_object_op = 800 * u.km
+perigee_object_op = 800 * u.km
+inc_object_op = 98.6 * u.deg
+EOL_manoeuvre = True
+PMD_success = 1
+apogee_object_disp = 800 * u.km
+perigee_object_disp = 165.9 * u.km
+inc_object_disp = 98.6 * u.deg """
+
+# simple circular SSO
+"""op_duration = 12.5 * u.year
+mass = 1000 * u.kg  # at end of mission (= dry + prop for EOLM):
+cross_section = (
+    10 * u.m**2
+)  # TODO the cross section can be computed from the CROC tool (from ESA) based on the dimensions --> what is possible to do ?
+mean_thrust = 100 * u.N  # /!\ in ACT, thrust is in kN
+Isp = 100 * u.s
+number_of_launch_es = 1
+apogee_object_op = 400 * u.km
+perigee_object_op = 400 * u.km
+inc_object_op = 98.6 * u.deg
+EOL_manoeuvre = True
+PMD_success = 1
+apogee_object_disp = 400 * u.km
+perigee_object_disp = 400 * u.km
+inc_object_disp = 98.6 * u.deg"""
+
+# simple elliptical SSO
+"""op_duration = 12.5 * u.year
+mass = 1000 * u.kg  # at end of mission (= dry + prop for EOLM):
+cross_section = (
+    10 * u.m**2
+)  # TODO the cross section can be computed from the CROC tool (from ESA) based on the dimensions --> what is possible to do ?
+mean_thrust = 100 * u.N  # /!\ in ACT, thrust is in kN
+Isp = 100 * u.s
+number_of_launch_es = 1
+apogee_object_op = 400 * u.km
+perigee_object_op = 400 * u.km
+inc_object_op = 98.6 * u.deg
+EOL_manoeuvre = True
+PMD_success = 1
+apogee_object_disp = 400 * u.km
+perigee_object_disp = 300 * u.km
+inc_object_disp = 98.6 * u.deg"""
+
+"""ADR_stage = False
+m_ADR = 620 * u.kg  # = wet mass (because no fuel consumed before insertion)
+ADR_cross_section = 3.75 * u.m**2
+ADR_mean_thrust = 24 * u.N  # /!\ in ACT, thrust is in kN
 ADR_Isp = 327 * u.s
 ADR_manoeuvre_success = 0.999
 ADR_capture_success = 0.90
 
 m_debris = 112 * u.kg
-debris_cross_section = 3.12 * u.m ** 2
-apogee_debris = 800 *u.km
-perigee_debris = 664 *u.km
+debris_cross_section = 3.12 * u.m**2
+apogee_debris = 800 * u.km
+perigee_debris = 664 * u.km
 inc_debris = 99.5 * u.deg
 
-apogee_debris_removal = 200 *u.km 
-perigee_debris_removal = 200 *u.km
+apogee_debris_removal = 200 * u.km
+perigee_debris_removal = 200 * u.km
+inc_debris_removal = 99.5 * u.deg"""
+
+# ISTV with ADR
+op_duration = 1 * u.year
+mass = 100 * u.kg  # at end of mission (= dry + prop for EOLM):
+cross_section = (
+    5 * u.m**2
+)  # TODO the cross section can be computed from the CROC tool (from ESA) based on the dimensions --> what is possible to do ?
+mean_thrust = 100 * u.N  # /!\ in ACT, thrust is in kN
+Isp = 300 * u.s
+number_of_launch_es = 1
+apogee_object_op = 600 * u.km
+perigee_object_op = 600 * u.km
+inc_object_op = 6 * u.deg
+EOL_manoeuvre = True
+PMD_success = 1
+apogee_object_disp = 200 * u.km
+perigee_object_disp = 200 * u.km
+inc_object_disp = 6 * u.deg
+
+ADR_stage = True
+m_ADR = 100 * u.kg  # = wet mass (because no fuel consumed before insertion)
+ADR_cross_section = 5 * u.m**2
+ADR_mean_thrust = 100 * u.N  # /!\ in ACT, thrust is in kN
+ADR_Isp = 300 * u.s
+ADR_manoeuvre_success = 1
+ADR_capture_success = 1
+
+m_debris = 112 * u.kg
+debris_cross_section = 3.12 * u.m**2
+apogee_debris = 800 * u.km
+perigee_debris = 664 * u.km
+inc_debris = 99.5 * u.deg
+
+apogee_debris_removal = 200 * u.km
+perigee_debris_removal = 200 * u.km
 inc_debris_removal = 99.5 * u.deg
 
-def sdi_main(starting_epoch, op_duration, mass, cross_section, mean_thrust, Isp, number_of_launch_es, apogee_object_op, perigee_object_op, inc_object_op, EOL_manoeuvre, PMD_success, apogee_object_disp, perigee_object_disp, 
-            inc_object_disp, ADR_stage, m_ADR, ADR_cross_section, ADR_mean_thrust, ADR_Isp, ADR_manoeuvre_success, ADR_capture_success, m_debris, debris_cross_section, apogee_debris, perigee_debris, inc_debris, 
-            apogee_debris_removal, perigee_debris_removal, inc_debris_removal):
 
-    print('Creating inputs...')
+def sdi_main(
+    starting_epoch,
+    op_duration,
+    mass,
+    cross_section,
+    mean_thrust,
+    Isp,
+    number_of_launch_es,
+    apogee_object_op,
+    perigee_object_op,
+    inc_object_op,
+    EOL_manoeuvre,
+    PMD_success,
+    apogee_object_disp,
+    perigee_object_disp,
+    inc_object_disp,
+    ADR_stage,
+    m_ADR,
+    ADR_cross_section,
+    ADR_mean_thrust,
+    ADR_Isp,
+    ADR_manoeuvre_success,
+    ADR_capture_success,
+    m_debris,
+    debris_cross_section,
+    apogee_debris,
+    perigee_debris,
+    inc_debris,
+    apogee_debris_removal,
+    perigee_debris_removal,
+    inc_debris_removal,
+):
+    print("Creating inputs...")
     # input parameters
 
     # NOTE this script is based on the literature:
@@ -77,11 +223,13 @@ def sdi_main(starting_epoch, op_duration, mass, cross_section, mean_thrust, Isp,
 
     if cross_section.value <= 0:
         raise ValueError("LV cross section muss be a positive number (m^2).")
-    
+
     if perigee_object_op.value <= 0:
         raise ValueError("LV operational perigee muss be a positive number (km).")
     elif apogee_object_op < perigee_object_op:
-        raise ValueError("LV operational apogee muss be larger or equal to perigee (km).")
+        raise ValueError(
+            "LV operational apogee muss be larger or equal to perigee (km)."
+        )
 
     if inc_object_op >= 180 * u.deg:
         raise ValueError("LV operational inclination not in the range 0 <= inc < 180.")
@@ -96,7 +244,9 @@ def sdi_main(starting_epoch, op_duration, mass, cross_section, mean_thrust, Isp,
         if perigee_object_disp <= 0:
             raise ValueError("LV disposal perigee muss be a positive number (km).")
         elif apogee_object_disp < perigee_object_disp:
-            raise ValueError("LV disposal apogee muss be larger or equal to perigee (km).")
+            raise ValueError(
+                "LV disposal apogee muss be larger or equal to perigee (km)."
+            )
 
         if inc_object_disp >= 180 * u.deg:
             raise ValueError("LV disposal inclination not in the range 0 <= inc < 180.")
@@ -113,14 +263,28 @@ def sdi_main(starting_epoch, op_duration, mass, cross_section, mean_thrust, Isp,
         inc_object_disp = inc_object_op
 
     print("\n --- Debris risk from launch vehicle orbital stage. ---")
-    LV_SDI_results = SDI_compute(starting_epoch, mass, cross_section, op_duration, mean_thrust, Isp, EOL_manoeuvre, PMD_success, a_op, ecc_op, inc_object_op,
-                                a_disp, ecc_disp, inc_object_disp)
+    LV_SDI_results = SDI_compute(
+        starting_epoch,
+        mass,
+        cross_section,
+        op_duration,
+        mean_thrust,
+        Isp,
+        EOL_manoeuvre,
+        PMD_success,
+        a_op,
+        ecc_op,
+        inc_object_op,
+        a_disp,
+        ecc_disp,
+        inc_object_disp,
+    )
 
     # For case with ADR stage included
     if ADR_stage == True:
         if m_ADR.value <= 0:
             raise ValueError("ADR stage dry mass muss be a positive number (kg).")
-        
+
         if ADR_cross_section.value <= 0:
             raise ValueError("ADR stage cross section muss be a positive number (m^2).")
 
@@ -146,253 +310,931 @@ def sdi_main(starting_epoch, op_duration, mass, cross_section, mean_thrust, Isp,
         if perigee_debris_removal <= 0:
             raise ValueError("Debris removal perigee muss be a positive number (km).")
         elif apogee_debris_removal < perigee_debris_removal:
-            raise ValueError("Debris removal apogee muss be larger or equal to perigee (km).")
+            raise ValueError(
+                "Debris removal apogee muss be larger or equal to perigee (km)."
+            )
 
-        a_debris_removal = (apogee_debris_removal + perigee_debris_removal) / 2 + Earth.R
-        ecc_debris_removal = (apogee_debris_removal + Earth.R - a_debris_removal) / a_debris_removal * u.one
+        a_debris_removal = (
+            apogee_debris_removal + perigee_debris_removal
+        ) / 2 + Earth.R
+        ecc_debris_removal = (
+            (apogee_debris_removal + Earth.R - a_debris_removal)
+            / a_debris_removal
+            * u.one
+        )
 
         if inc_debris_removal >= 180 * u.deg:
-            raise ValueError("Debris removal inclination not in the range 0 <= inc < 180.")
+            raise ValueError(
+                "Debris removal inclination not in the range 0 <= inc < 180."
+            )
         elif inc_debris_removal < 0 * u.deg:
-            raise ValueError("Debris removal inclination not in the range 0 <= inc < 180.")
+            raise ValueError(
+                "Debris removal inclination not in the range 0 <= inc < 180."
+            )
 
-        print("\n\n --- Debris risk from active debris removal servicer, from insertion to debris orbit. ---")
+        print(
+            "\n\n --- Debris risk from active debris removal servicer, from insertion to debris orbit. ---"
+        )
         # Assumes ADR inserted at launcher's operational orbit, the "disposal manoeuvre" here describes the trajectory from insertion to the debris
-        ADR_servicer_SDI = SDI_compute(starting_epoch, m_ADR, ADR_cross_section, 0 * u.year, ADR_mean_thrust, ADR_Isp, True, ADR_manoeuvre_success, a_op, ecc_op, inc_object_op,
-                                a_debris, ecc_debris, inc_debris)
+        ADR_servicer_SDI = SDI_compute(
+            starting_epoch,
+            m_ADR,
+            ADR_cross_section,
+            0 * u.year,
+            ADR_mean_thrust,
+            ADR_Isp,
+            True,
+            ADR_manoeuvre_success,
+            a_op,
+            ecc_op,
+            inc_object_op,
+            a_debris,
+            ecc_debris,
+            inc_debris,
+        )
 
         # compute risk generated by debris if not removed, debris assumed inert (no propulsion capability)
         print("\n\n --- Residual debris risk from debris. ---")
-        debris_residual_SDI = SDI_compute(starting_epoch, m_debris, debris_cross_section, 0 * u.year, 0 * u.N, 0 * u.s, False, 1, a_debris, ecc_debris, inc_debris,
-                                a_debris, ecc_debris, inc_debris)
+        debris_residual_SDI = SDI_compute(
+            starting_epoch,
+            m_debris,
+            debris_cross_section,
+            0 * u.year,
+            0 * u.N,
+            0 * u.s,
+            False,
+            1,
+            a_debris,
+            ecc_debris,
+            inc_debris,
+            a_debris,
+            ecc_debris,
+            inc_debris,
+        )
 
         # assumes the debris is captured directly after ADR servicer manoeuvre from its insertion to the debris' orbit
-        print("\n\n --- Debris risk from removal operations, from debris orbit to target disposal. ---")
-        SDI_debris_removal = SDI_compute(starting_epoch, m_debris + m_ADR - ADR_servicer_SDI["Mass_burnt"], max(debris_cross_section, ADR_cross_section), 0 * u.year, ADR_mean_thrust, ADR_Isp, True, 
-                                        ADR_manoeuvre_success*ADR_capture_success, a_debris, ecc_debris, inc_debris, a_debris_removal , ecc_debris_removal, inc_debris_removal)
+        print(
+            "\n\n --- Debris risk from removal operations, from debris orbit to target disposal. ---"
+        )
+        SDI_debris_removal = SDI_compute(
+            starting_epoch,
+            m_debris + m_ADR - ADR_servicer_SDI["Mass_burnt"],
+            max(debris_cross_section, ADR_cross_section),
+            0 * u.year,
+            ADR_mean_thrust,
+            ADR_Isp,
+            True,
+            ADR_manoeuvre_success * ADR_capture_success,
+            a_debris,
+            ecc_debris,
+            inc_debris,
+            a_debris_removal,
+            ecc_debris_removal,
+            inc_debris_removal,
+        )
 
-        print("\n\n Final impact with ADR risk reduction:", "{:.3f}".format(number_of_launch_es*(LV_SDI_results["Space_Debris_Index"] + ADR_servicer_SDI["Disposal_manoeuvre_percentage"]*ADR_servicer_SDI["Space_Debris_Index"]
-                + SDI_debris_removal["Space_Debris_Index"] - debris_residual_SDI["Space_Debris_Index"])), "Mass burnt for 1 LV EOLM", "{:.3f}".format(LV_SDI_results["Mass_burnt"]), 
-                "\n LCS3:", "{:.3f}".format(number_of_launch_es*(LV_SDI_results["Space_Debris_Index"]*LV_SDI_results["Operational_percentage"] + ADR_servicer_SDI["Disposal_manoeuvre_percentage"]*ADR_servicer_SDI["Space_Debris_Index"]
-                + SDI_debris_removal["Space_Debris_Index"]*SDI_debris_removal["Disposal_manoeuvre_percentage"] - debris_residual_SDI["Space_Debris_Index"])), 
-                "\n LCS4:", "{:.3f}".format(number_of_launch_es*(LV_SDI_results["Space_Debris_Index"]*(1-LV_SDI_results["Operational_percentage"]) + 
-                SDI_debris_removal["Space_Debris_Index"]*SDI_debris_removal["Natural_decay_percentage"])), "\n BB_orbital_stage:", "{:.3f}".format(number_of_launch_es*LV_SDI_results["Space_Debris_Index"]), "\n BB_ADR_stage:", 
-                "{:.3f}".format(number_of_launch_es*(ADR_servicer_SDI["Disposal_manoeuvre_percentage"]*ADR_servicer_SDI["Space_Debris_Index"] + SDI_debris_removal["Space_Debris_Index"])), 
-                "\n BB_ADR_strategy:", "{:.3f}".format(- number_of_launch_es*debris_residual_SDI["Space_Debris_Index"]))
+        print(
+            "\n\n Final impact SDI 2019 with ADR risk reduction:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * (
+                    LV_SDI_results["Space_Debris_Index_2019"]
+                    + ADR_servicer_SDI["Disposal_manoeuvre_percentage_2019"]
+                    * ADR_servicer_SDI["Space_Debris_Index_2019"]
+                    + SDI_debris_removal["Space_Debris_Index_2019"]
+                    - debris_residual_SDI["Space_Debris_Index_2019"]
+                )
+            ),
+            "Mass burnt for 1 LV EOLM",
+            "{:.3f}".format(LV_SDI_results["Mass_burnt"]),
+            "\n LCS3:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * (
+                    LV_SDI_results["Space_Debris_Index_2019"]
+                    * LV_SDI_results["Operational_percentage_2019"]
+                    + ADR_servicer_SDI["Disposal_manoeuvre_percentage_2019"]
+                    * ADR_servicer_SDI["Space_Debris_Index_2019"]
+                    + SDI_debris_removal["Space_Debris_Index_2019"]
+                    * SDI_debris_removal["Disposal_manoeuvre_percentage_2019"]
+                    - debris_residual_SDI["Space_Debris_Index_2019"]
+                )
+            ),
+            "\n LCS4:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * (
+                    LV_SDI_results["Space_Debris_Index_2019"]
+                    * (1 - LV_SDI_results["Operational_percentage_2019"])
+                    + SDI_debris_removal["Space_Debris_Index_2019"]
+                    * SDI_debris_removal["Natural_decay_percentage_2019"]
+                )
+            ),
+            "\n BB_orbital_stage:",
+            "{:.3f}".format(
+                number_of_launch_es * LV_SDI_results["Space_Debris_Index_2019"]
+            ),
+            "\n BB_ADR_stage:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * (
+                    ADR_servicer_SDI["Disposal_manoeuvre_percentage_2019"]
+                    * ADR_servicer_SDI["Space_Debris_Index_2019"]
+                    + SDI_debris_removal["Space_Debris_Index_2019"]
+                )
+            ),
+            "\n BB_ADR_strategy:",
+            "{:.3f}".format(
+                -number_of_launch_es * debris_residual_SDI["Space_Debris_Index_2019"]
+            ),
+        )
+        print(
+            "\n\n Final impact SDI 2022 with ADR risk reduction:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * (
+                    LV_SDI_results["Space_Debris_Index_2022"]
+                    + ADR_servicer_SDI["Disposal_manoeuvre_percentage_2022"]
+                    * ADR_servicer_SDI["Space_Debris_Index_2022"]
+                    + SDI_debris_removal["Space_Debris_Index_2022"]
+                    - debris_residual_SDI["Space_Debris_Index_2022"]
+                )
+            ),
+            "Mass burnt for 1 LV EOLM",
+            "{:.3f}".format(LV_SDI_results["Mass_burnt"]),
+            "\n LCS3:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * (
+                    LV_SDI_results["Space_Debris_Index_2022"]
+                    * LV_SDI_results["Operational_percentage_2022"]
+                    + ADR_servicer_SDI["Disposal_manoeuvre_percentage_2022"]
+                    * ADR_servicer_SDI["Space_Debris_Index_2022"]
+                    + SDI_debris_removal["Space_Debris_Index_2022"]
+                    * SDI_debris_removal["Disposal_manoeuvre_percentage_2022"]
+                    - debris_residual_SDI["Space_Debris_Index_2022"]
+                )
+            ),
+            "\n LCS4:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * (
+                    LV_SDI_results["Space_Debris_Index_2022"]
+                    * (1 - LV_SDI_results["Operational_percentage_2022"])
+                    + SDI_debris_removal["Space_Debris_Index_2022"]
+                    * SDI_debris_removal["Natural_decay_percentage_2022"]
+                )
+            ),
+            "\n BB_orbital_stage:",
+            "{:.3f}".format(
+                number_of_launch_es * LV_SDI_results["Space_Debris_Index_2022"]
+            ),
+            "\n BB_ADR_stage:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * (
+                    ADR_servicer_SDI["Disposal_manoeuvre_percentage_2022"]
+                    * ADR_servicer_SDI["Space_Debris_Index_2022"]
+                    + SDI_debris_removal["Space_Debris_Index_2022"]
+                )
+            ),
+            "\n BB_ADR_strategy:",
+            "{:.3f}".format(
+                -number_of_launch_es * debris_residual_SDI["Space_Debris_Index_2022"]
+            ),
+        )
     else:
-        print("\n\n Final impact:", "{:.3f}".format(number_of_launch_es*LV_SDI_results["Space_Debris_Index"]), "Mass burnt for 1 LV EOLM", "{:.3f}".format(LV_SDI_results["Mass_burnt"]), 
-              "\n LCS3:", "{:.3f}".format(number_of_launch_es*LV_SDI_results["Space_Debris_Index"]*LV_SDI_results["Operational_percentage"]), "\n LCS4:", "{:.3f}".format(number_of_launch_es*LV_SDI_results["Space_Debris_Index"]*(1 - LV_SDI_results["Operational_percentage"])))
+        print(
+            "\n\n Final impact SDI 2019:",
+            "{:.3f}".format(
+                number_of_launch_es * LV_SDI_results["Space_Debris_Index_2019"]
+            ),
+            "Mass burnt for 1 LV EOLM",
+            "{:.3f}".format(LV_SDI_results["Mass_burnt"]),
+            "\n LCS3:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * LV_SDI_results["Space_Debris_Index_2019"]
+                * LV_SDI_results["Operational_percentage_2019"]
+            ),
+            "\n LCS4:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * LV_SDI_results["Space_Debris_Index_2019"]
+                * (1 - LV_SDI_results["Operational_percentage_2019"])
+            ),
+        )
+        print(
+            "\n\n Final impact SDI 2022:",
+            "{:.3f}".format(
+                number_of_launch_es * LV_SDI_results["Space_Debris_Index_2022"]
+            ),
+            "Mass burnt for 1 LV EOLM",
+            "{:.3f}".format(LV_SDI_results["Mass_burnt"]),
+            "\n LCS3:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * LV_SDI_results["Space_Debris_Index_2022"]
+                * LV_SDI_results["Operational_percentage_2022"]
+            ),
+            "\n LCS4:",
+            "{:.3f}".format(
+                number_of_launch_es
+                * LV_SDI_results["Space_Debris_Index_2022"]
+                * (1 - LV_SDI_results["Operational_percentage_2022"])
+            ),
+        )
 
-def SDI_compute(starting_epoch, mass, cross_section, op_duration, mean_thrust, Isp, EOL_manoeuvre, PMD_success, a_op, ecc_op, inc_object_op,
-                a_disp, ecc_disp, inc_object_disp):
-    
-    # input .csv file for characterization factor
-    CF_file = np.genfromtxt(f'sdi_space_debris_CF_for_code.csv', delimiter=",", skip_header=1)
+
+def SDI_compute(
+    starting_epoch,
+    mass,
+    cross_section,
+    op_duration,
+    mean_thrust,
+    Isp,
+    EOL_manoeuvre,
+    PMD_success,
+    a_op,
+    ecc_op,
+    inc_object_op,
+    a_disp,
+    ecc_disp,
+    inc_object_disp,
+):
+    # input .csv file for characterization factors
+    CF_file = np.genfromtxt(
+        f"sdi_space_debris_CF_for_code.csv", delimiter=",", skip_header=2
+    )
     # input .csv file for natural decay
-    reduced_lifetime_file = np.genfromtxt(f'sdi_reduced_lifetime.csv', delimiter=",", skip_header=2)
+    reduced_lifetime_file = np.genfromtxt(
+        f"sdi_reduced_lifetime.csv", delimiter=",", skip_header=2
+    )
+    # input .csv file for new SDI characterization factors (2022)
+    new_CF_file = np.genfromtxt(
+        f"sdi_2022_T_Maury_newSDI_CF.csv", delimiter=";", skip_header=2
+    )
+    # input .csv file for the Flux of debris (inventory)
+    MASTER_flux = np.genfromtxt(
+        f"sdi_2022_T_Maury_master_debris_flux.csv", delimiter=";", skip_header=2
+    )
 
-    operational_orbit = Orbit.from_classical(Earth, 
-                                            a_op, 
-                                            ecc_op, 
-                                            inc_object_op, 
-                                            0. * u.deg,
-                                            90. * u.deg,
-                                            0. * u.deg,
-                                            starting_epoch)
+    operational_orbit = Orbit.from_classical(
+        Earth,
+        a_op,
+        ecc_op,
+        inc_object_op,
+        0.0 * u.deg,
+        90.0 * u.deg,
+        0.0 * u.deg,
+        starting_epoch,
+    )
 
-    disposal_orbit = Orbit.from_classical(Earth, 
-                                            a_disp, 
-                                            ecc_disp, 
-                                            inc_object_disp, 
-                                            0. * u.deg,
-                                            90. * u.deg,
-                                            0. * u.deg,
-                                            starting_epoch)
+    disposal_orbit = Orbit.from_classical(
+        Earth,
+        a_disp,
+        ecc_disp,
+        inc_object_disp,
+        0.0 * u.deg,
+        90.0 * u.deg,
+        0.0 * u.deg,
+        starting_epoch,
+    )
 
     # Impact score computation
-    print('Start finding the orbital case and computing impact score...')
+    print("Start finding the orbital case and computing impact score...")
 
     # #1 Case if operational perigee is lower than the atmosphere limit, no natural decay hereafter
     if (operational_orbit.r_p - Earth.R) < ALTITUDE_ATMOSPHERE_LIMIT:
         # Case if object is already completely in the atmosphere
         if (operational_orbit.r_a - Earth.R) < ALTITUDE_ATMOSPHERE_LIMIT:
             print("Object will reenter directly.")
-            impact_score = 0 * u.year *u.pot_fragments
-            op_impact_percentage = 0
-            disp_maneuver_impact_percentage = 0
-            natural_impact_percentage = 0
+            impact_score = 0 * u.year * u.pot_fragments
+            new_impact_score = 0 * u.kdollars
+            op_impact_percentage = new_op_impact_percentage = 0
+            disp_maneuver_impact_percentage = new_disp_maneuver_impact_percentage = 0
+            natural_impact_percentage = new_natural_impact_percentage = 0
             print("--\n Computed space debris impact score is", impact_score, ".")
 
-            results = {"Space_Debris_Index": impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage,
-                        "Transfer_duration": 0 * u.year, "Mass_burnt": 0 * u.kg}
+            results = {
+                "Space_Debris_Index_2019": impact_score,
+                "Space_Debris_Index_2022": new_impact_score,
+                "Operational_percentage_2019": op_impact_percentage,
+                "Disposal_manoeuvre_percentage_2019": disp_maneuver_impact_percentage,
+                "Natural_decay_percentage_2019": natural_impact_percentage,
+                "Operational_percentage_2022": new_op_impact_percentage,
+                "Disposal_manoeuvre_percentage_2022": new_disp_maneuver_impact_percentage,
+                "Natural_decay_percentage_2022": new_natural_impact_percentage,
+                "Transfer_duration": 0 * u.year,
+                "Mass_burnt": 0 * u.kg,
+            }
             return results
         else:
             # Case if apogee is in space and perigee in the atmosphere: direct reentry
             print("Direct reentry.")
             # Compute impact of reentry: decompose elliptical orbit and use time_to_anomaly after finding LTAN from position meaning altitude
-            disposal_impact = elliptical_orbit_decomposition(CF_file, operational_orbit, mass)
+            disposal_impact_temp, new_disposal_impact_temp = (
+                elliptical_orbit_decomposition(
+                    CF_file, new_CF_file, MASTER_flux, operational_orbit, mass
+                )
+            )
+            impact_score = disposal_impact_temp * mass * cross_section
+            new_sdi_economic_impact = new_disposal_impact_temp * cross_section
 
-            impact_score = disposal_impact*mass*cross_section
-            op_impact_percentage = 0
-            disp_maneuver_impact_percentage = 1
-            transfer_duration = (np.pi*np.sqrt(a_op ** 3 / Earth.k)).value * u.year # half ellipse period
-            natural_impact_percentage = 0
-            print("--\n Computed space debris impact score is", "{:.3f}".format(impact_score), ". 0 percent operational impact, 100 percent disposal impact.")
+            new_op_impact_percentage = op_impact_percentage = 0
+            disp_maneuver_impact_percentage = new_disp_maneuver_impact_percentage = 1
+            transfer_duration = (
+                np.pi * np.sqrt(a_op**3 / Earth.k)
+            ).value * u.year  # half ellipse period
+            natural_impact_percentage = new_natural_impact_percentage = 0
+            print(
+                "--\n Computed space debris impact score is",
+                "{:.3f}".format(impact_score),
+                ". 0 percent operational impact, 100 percent disposal impact.",
+            )
 
-            results = {"Space_Debris_Index": impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage, 
-                        "Transfer_duration": transfer_duration, "Mass_burnt": 0 * u.kg}
+            results = {
+                "Space_Debris_Index_2019": impact_score,
+                "Space_Debris_Index_2022": new_sdi_economic_impact,
+                "Operational_percentage_2019": op_impact_percentage,
+                "Disposal_manoeuvre_percentage_2019": disp_maneuver_impact_percentage,
+                "Natural_decay_percentage_2019": natural_impact_percentage,
+                "Operational_percentage_2022": new_op_impact_percentage,
+                "Disposal_manoeuvre_percentage_2022": new_disp_maneuver_impact_percentage,
+                "Natural_decay_percentage_2022": new_natural_impact_percentage,
+                "Transfer_duration": transfer_duration,
+                "Mass_burnt": 0 * u.kg,
+            }
             return results
 
     # #2 Case if object's perigee is higher than LEO
     elif (operational_orbit.r_p - Earth.R) > ALTITUDE_LEO_LIMIT:
-        print("Operational orbit is higher than LEO, no debris impact computed for the operational phase.")
+        print(
+            "Operational orbit is higher than LEO, no debris impact computed for the operational phase."
+        )
         CF_op = 0
-        op_impact_percentage = 0
+        op_impact_percentage = new_op_impact_percentage = 0
         # Check disposal orbit
         if (disposal_orbit.r_p - Earth.R) > ALTITUDE_LEO_LIMIT:
-            print("Graveyard orbit outside of LEO, no debris impact computed for the disposal phase.")
-            manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
+            print(
+                "Graveyard orbit outside of LEO, no debris impact computed for the disposal phase."
+            )
+            manoeuvres, transfer_duration, transfer_orbit, burned_mass = (
+                high_thrust_delta_v(
+                    operational_orbit, disposal_orbit, mass, mean_thrust, Isp
+                )
+            )
             if burned_mass > mass:
-                raise ValueError("Propellant mass is not sufficient to perform manoeuvre.")
+                raise ValueError(
+                    "Propellant mass is not sufficient to perform manoeuvre."
+                )
             # TODO add decay from above LEO limit ? No we assume graveyard decays so slowly the spacecraft will no enter LEO protected region
-            impact_score = 0 * u.year *u.pot_fragments
-            disp_maneuver_impact_percentage = 0
-            natural_impact_percentage = 0
+            impact_score = 0 * u.year * u.pot_fragments
+            new_sdi_economic_impact = 0 * u.kdollars
+            disp_maneuver_impact_percentage = new_disp_maneuver_impact_percentage = 0
+            natural_impact_percentage = new_natural_impact_percentage = 0
             print("--\n Computed space debris impact score is", impact_score, ".")
 
-            results = {"Space_Debris_Index": impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage,
-                        "Transfer_duration": transfer_duration.to(u.year), "Mass_burnt": burned_mass}
+            results = {
+                "Space_Debris_Index_2019": impact_score,
+                "Space_Debris_Index_2022": new_sdi_economic_impact,
+                "Operational_percentage_2019": op_impact_percentage,
+                "Disposal_manoeuvre_percentage_2019": disp_maneuver_impact_percentage,
+                "Natural_decay_percentage_2019": natural_impact_percentage,
+                "Operational_percentage_2022": new_op_impact_percentage,
+                "Disposal_manoeuvre_percentage_2022": new_disp_maneuver_impact_percentage,
+                "Natural_decay_percentage_2022": new_natural_impact_percentage,
+                "Transfer_duration": transfer_duration.to(u.year),
+                "Mass_burnt": burned_mass,
+            }
             return results
         else:
             print("Reentry manoeuvre from operational orbit higher than LEO.")
-            manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
+            manoeuvres, transfer_duration, transfer_orbit, burned_mass = (
+                high_thrust_delta_v(
+                    operational_orbit, disposal_orbit, mass, mean_thrust, Isp
+                )
+            )
             if burned_mass > mass:
-                raise ValueError("Propellant mass is not sufficient to perform manoeuvre.")
+                raise ValueError(
+                    "Propellant mass is not sufficient to perform manoeuvre."
+                )
             # Compute impact of disposal manoeuvre: decompose elliptical orbit and use time_to_anomaly after finding LTAN from position meaning altitude
-            disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass)*(mass - burned_mass)*cross_section
+            disposal_impact_temp, new_disposal_impact_temp = (
+                elliptical_orbit_decomposition(
+                    CF_file,
+                    new_CF_file,
+                    MASTER_flux,
+                    transfer_orbit,
+                    mass - burned_mass,
+                )
+            )
+            disposal_impact = (
+                disposal_impact_temp * (mass - burned_mass) * cross_section
+            )
+            new_disposal_impact = new_disposal_impact_temp * cross_section
 
             if disposal_orbit.r_p < ALTITUDE_ATMOSPHERE_LIMIT + Earth.R:
-                natural_decay_impact = 0 * u.year *u.pot_fragments
+                natural_decay_impact = 0 * u.year * u.pot_fragments
+                new_natural_decay_impact = 0 * u.kdollars
             else:
-                natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass - burned_mass, transfer_duration, op_duration, SUCCESS)
-            
-            # impact of unsuccessful manoeuvre would be 0 since spacecraft would stay above LEO region
-            total_impact_score = (disposal_impact + natural_decay_impact)*PMD_success
-            print("/!\ no impact computed if no disposal, lower impact if low PMD success rate, only because no CFs outside LEO protected region...")
+                natural_decay_time, natural_decay_impact, new_natural_decay_impact = (
+                    natural_decay(
+                        reduced_lifetime_file,
+                        CF_file,
+                        new_CF_file,
+                        MASTER_flux,
+                        disposal_orbit,
+                        cross_section,
+                        mass - burned_mass,
+                        transfer_duration,
+                        op_duration,
+                        SUCCESS,
+                    )
+                )
 
-            natural_impact_percentage = natural_decay_impact*PMD_success/total_impact_score
+            # impact of unsuccessful manoeuvre would be 0 since spacecraft would stay above LEO region
+            total_impact_score = (disposal_impact + natural_decay_impact) * PMD_success
+            new_total_impact_score = (
+                new_disposal_impact + new_natural_decay_impact
+            ) * PMD_success
+            print(
+                "/!\ no impact computed if no disposal, lower impact if low PMD success rate, only because no CFs outside LEO protected region..."
+            )
+
+            natural_impact_percentage = (
+                natural_decay_impact * PMD_success / total_impact_score
+            )
             disp_maneuver_impact_percentage = 1 - natural_impact_percentage
-            print("--\n Computed space debris impact score is", "{:.3f}".format(total_impact_score), ". 0 percent operational impact, 100 percent disposal impact. Of which", "{:.3f}".format(disp_maneuver_impact_percentage), "percent from the disposal manoeuvre, ",
-                 "{:.3f}".format(natural_impact_percentage), "percent from the natural decay.")
-            
-            results = {"Space_Debris_Index": total_impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage, 
-                        "Transfer_duration": transfer_duration.to(u.year), "Mass_burnt": burned_mass}
+            new_natural_impact_percentage = (
+                new_natural_decay_impact * PMD_success / new_total_impact_score
+            )
+            new_disp_maneuver_impact_percentage = 1 - new_natural_impact_percentage
+            print(
+                "--\n Computed space debris impact score is",
+                "{:.3f}".format(total_impact_score),
+                ". 0 percent operational impact, 100 percent disposal impact. Of which",
+                "{:.3f}".format(disp_maneuver_impact_percentage * 100),
+                "percent from the disposal manoeuvre, ",
+                "{:.3f}".format(natural_impact_percentage),
+                "percent from the natural decay.",
+            )
+
+            results = {
+                "Space_Debris_Index_2019": total_impact_score,
+                "Space_Debris_Index_2022": new_total_impact_score,
+                "Operational_percentage_2019": op_impact_percentage,
+                "Disposal_manoeuvre_percentage_2019": disp_maneuver_impact_percentage,
+                "Natural_decay_percentage_2019": natural_impact_percentage,
+                "Operational_percentage_2022": new_op_impact_percentage,
+                "Disposal_manoeuvre_percentage_2022": new_disp_maneuver_impact_percentage,
+                "Natural_decay_percentage_2022": new_natural_impact_percentage,
+                "Transfer_duration": transfer_duration.to(u.year),
+                "Mass_burnt": burned_mass,
+            }
             return results
 
     # #3 Cases if object has perigee in LEO
     # Case of LEO circular orbit
     elif operational_orbit.r_a == operational_orbit.r_p:
         print("LEO circular")
-        CF_op = get_characterization_factor(CF_file, (operational_orbit.r_p - Earth.R), operational_orbit.inc)
-        OP_impact = cross_section*mass*CF_op*alpha_param(mass)*op_duration
+        CF_op = get_characterization_factor(
+            CF_file, (operational_orbit.r_p - Earth.R), operational_orbit.inc
+        )
+        OP_impact = cross_section * mass * CF_op * alpha_param(mass) * op_duration
+        # new SDI (2022)
+        new_characterization_factor, flux_value = get_new_characterization_factor(
+            new_CF_file,
+            MASTER_flux,
+            (operational_orbit.r_p - Earth.R),
+            operational_orbit.inc,
+        )
+        new_OP_impact = (
+            new_characterization_factor
+            * flux_value
+            * compute_released_fragments_of_size_Lc(mass)
+            * cross_section
+            * op_duration
+        )
 
         # disposal manoeuvre
         if EOL_manoeuvre:
             print("EOLM")
-            manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
+            manoeuvres, transfer_duration, transfer_orbit, burned_mass = (
+                high_thrust_delta_v(
+                    operational_orbit, disposal_orbit, mass, mean_thrust, Isp
+                )
+            )
             if burned_mass > mass:
-                raise ValueError("Propellant mass is not sufficient to perform manoeuvre.")
+                raise ValueError(
+                    "Propellant mass is not sufficient to perform manoeuvre."
+                )
             # Compute impact of disposal manoeuvre
             # Case from LEO into deorbitation
-            if disposal_orbit.a < operational_orbit.a:
-                disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass) # intermediate impact
+            if disposal_orbit.a <= operational_orbit.a:
+                disposal_impact_temp, new_disposal_impact_temp = (
+                    elliptical_orbit_decomposition(
+                        CF_file,
+                        new_CF_file,
+                        MASTER_flux,
+                        transfer_orbit,
+                        mass - burned_mass,
+                    )
+                )  # intermediate impact
                 if disposal_orbit.r_p < ALTITUDE_ATMOSPHERE_LIMIT + Earth.R:
-                    natural_decay_impact = 0 * u.year *u.pot_fragments
+                    natural_decay_impact = 0 * u.year * u.pot_fragments
+                    new_natural_decay_impact = 0 * u.kdollars
                 else:
                     # natural decay impact after successful EOLM
-                    natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass - burned_mass, transfer_duration, op_duration, SUCCESS)
+                    (
+                        natural_decay_time,
+                        natural_decay_impact,
+                        new_natural_decay_impact,
+                    ) = natural_decay(
+                        reduced_lifetime_file,
+                        CF_file,
+                        new_CF_file,
+                        MASTER_flux,
+                        disposal_orbit,
+                        cross_section,
+                        mass - burned_mass,
+                        transfer_duration,
+                        op_duration,
+                        SUCCESS,
+                    )
             # case going from LEO to above LEO in graveyard
             elif disposal_orbit.a > operational_orbit.a:
-                disposal_impact = elliptical_orbit_decomposition_up(CF_file, transfer_orbit, mass - burned_mass) # intermediate impact
+                disposal_impact_temp, new_disposal_impact_temp = (
+                    elliptical_orbit_decomposition_up(
+                        CF_file,
+                        new_CF_file,
+                        MASTER_flux,
+                        transfer_orbit,
+                        mass - burned_mass,
+                    )
+                )  # intermediate impact
                 if disposal_orbit.r_p < ALTITUDE_LEO_LIMIT + Earth.R:
                     # natural decay impact after successful EOLM
-                    natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass - burned_mass, transfer_duration, op_duration, SUCCESS)
+                    (
+                        natural_decay_time,
+                        natural_decay_impact,
+                        new_natural_decay_impact,
+                    ) = natural_decay(
+                        reduced_lifetime_file,
+                        CF_file,
+                        new_CF_file,
+                        MASTER_flux,
+                        disposal_orbit,
+                        cross_section,
+                        mass - burned_mass,
+                        transfer_duration,
+                        op_duration,
+                        SUCCESS,
+                    )
                 else:
-                    natural_decay_impact = 0 * u.year *u.pot_fragments
-            
+                    natural_decay_impact = 0 * u.year * u.pot_fragments
+                    new_natural_decay_impact = 0 * u.kdollars
+
             # Compute impact of natural decay in the case of no EOLM or an unsuccessful end-of-life manoeuvre (EOLM)
-            uns_natural_decay_time, uns_natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, operational_orbit, cross_section, mass, 0 * u.day, op_duration, FAIL)
+            (
+                uns_natural_decay_time,
+                uns_natural_decay_impact,
+                uns_new_natural_decay_impact,
+            ) = natural_decay(
+                reduced_lifetime_file,
+                CF_file,
+                new_CF_file,
+                MASTER_flux,
+                operational_orbit,
+                cross_section,
+                mass,
+                0 * u.day,
+                op_duration,
+                FAIL,
+            )
         else:
             transfer_duration = 0 * u.year
             burned_mass = 0 * u.kg
-            disposal_impact = 0 * u.pot_fragments * u.year * u.kg **(-1) * u.m **(-2) # intermediate impact
-            natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass - burned_mass, transfer_duration, op_duration, SUCCESS)
+            disposal_impact_temp = (
+                0 * u.pot_fragments * u.year * u.kg ** (-1) * u.m ** (-2)
+            )  # intermediate impact
+            new_disposal_impact_temp = (
+                0 * u.kdollars * u.m ** (-2)
+            )  # intermediate impact
+            natural_decay_time, natural_decay_impact, new_natural_decay_impact = (
+                natural_decay(
+                    reduced_lifetime_file,
+                    CF_file,
+                    new_CF_file,
+                    MASTER_flux,
+                    disposal_orbit,
+                    cross_section,
+                    mass - burned_mass,
+                    transfer_duration,
+                    op_duration,
+                    SUCCESS,
+                )
+            )
             uns_natural_decay_impact = 0 * u.pot_fragments * u.year
+            uns_new_natural_decay_impact = 0 * u.kdollars
 
-        total_impact_score = OP_impact + (cross_section*(mass - burned_mass)*disposal_impact + natural_decay_impact)*PMD_success + (1-PMD_success)*uns_natural_decay_impact
+        total_impact_score = (
+            OP_impact
+            + PMD_success
+            * (
+                cross_section * (mass - burned_mass) * disposal_impact_temp
+                + natural_decay_impact
+            )
+            + (1 - PMD_success) * uns_natural_decay_impact
+        )
+        new_total_impact_score = (
+            new_OP_impact
+            + PMD_success
+            * (new_disposal_impact_temp * cross_section + new_natural_decay_impact)
+            + (1 - PMD_success) * uns_new_natural_decay_impact
+        )
 
-        natural_impact_percentage = (natural_decay_impact*PMD_success + (1-PMD_success)*uns_natural_decay_impact)/total_impact_score
-        op_impact_percentage = OP_impact/total_impact_score
-        disp_maneuver_impact_percentage = 1 - natural_impact_percentage - op_impact_percentage
+        natural_impact_percentage = (
+            natural_decay_impact * PMD_success
+            + (1 - PMD_success) * uns_natural_decay_impact
+        ) / total_impact_score
+        op_impact_percentage = OP_impact / total_impact_score
+        disp_maneuver_impact_percentage = (
+            1 - natural_impact_percentage - op_impact_percentage
+        )
 
-        print("--\n Computed space debris impact score is", "{:.3f}".format(total_impact_score), ".", "{:.3f}".format(op_impact_percentage), "percent from operations, ", "{:.3f}".format(disp_maneuver_impact_percentage), "percent from disposal manoeuvre, ", "{:.3f}".format(natural_impact_percentage), "percent from natural decay.")
-        
-        results = {"Space_Debris_Index": total_impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage,
-                    "Transfer_duration": transfer_duration.to(u.year), "Mass_burnt": burned_mass}
+        if new_total_impact_score == 0:
+            new_op_impact_percentage = 0
+        else:
+            new_op_impact_percentage = new_OP_impact / new_total_impact_score
+        new_natural_impact_percentage = (
+            new_natural_decay_impact * PMD_success
+            + (1 - PMD_success) * uns_new_natural_decay_impact
+        ) / new_total_impact_score
+        new_disp_maneuver_impact_percentage = (
+            1 - new_op_impact_percentage - new_natural_impact_percentage
+        )
+
+        print(
+            "--\n Computed space debris impact score is",
+            "{:.3f}".format(total_impact_score),
+            ".",
+            "{:.3f}".format(op_impact_percentage * 100),
+            "percent from operations, ",
+            "{:.3f}".format(disp_maneuver_impact_percentage * 100),
+            "percent from disposal manoeuvre, ",
+            "{:.3f}".format(natural_impact_percentage * 100),
+            "percent from natural decay.",
+        )
+
+        results = {
+            "Space_Debris_Index_2019": total_impact_score,
+            "Space_Debris_Index_2022": new_total_impact_score,
+            "Operational_percentage_2019": op_impact_percentage,
+            "Disposal_manoeuvre_percentage_2019": disp_maneuver_impact_percentage,
+            "Natural_decay_percentage_2019": natural_impact_percentage,
+            "Operational_percentage_2022": new_op_impact_percentage,
+            "Disposal_manoeuvre_percentage_2022": new_disp_maneuver_impact_percentage,
+            "Natural_decay_percentage_2022": new_natural_impact_percentage,
+            "Transfer_duration": transfer_duration.to(u.year),
+            "Mass_burnt": burned_mass,
+        }
         return results
 
     # Cases of elliptical operational orbit
     else:
-        print("Elliptical operational orbit partially higher than LEO or completely in LEO.")
+        print(
+            "Elliptical operational orbit partially higher than LEO or completely in LEO."
+        )
 
         # Compute impact of half elliptical operational orbit, times two for the complete impact of one pass in LEO, times the number of orbits during the operational lifetime
-        operational_impact = cross_section*mass*2*elliptical_orbit_decomposition(CF_file, operational_orbit, mass)*op_duration/operational_orbit.period.to(u.year)
+        operational_impact_temp, new_OP_impact_temp = elliptical_orbit_decomposition(
+            CF_file, new_CF_file, MASTER_flux, operational_orbit, mass
+        )
+        operational_impact = (
+            operational_impact_temp
+            * cross_section
+            * mass
+            * 2
+            * op_duration
+            / operational_orbit.period.to(u.year)
+        )
+        new_OP_impact = new_OP_impact_temp * cross_section
 
         # disposal manoeuvre
         if EOL_manoeuvre:
             print("EOLM")
-            manoeuvres, transfer_duration, transfer_orbit, burned_mass = high_thrust_delta_v(operational_orbit, disposal_orbit, mass, mean_thrust, Isp)
+            manoeuvres, transfer_duration, transfer_orbit, burned_mass = (
+                high_thrust_delta_v(
+                    operational_orbit, disposal_orbit, mass, mean_thrust, Isp
+                )
+            )
             if burned_mass > mass:
-                raise ValueError("Propellant mass is not sufficient to perform manoeuvre.")
+                raise ValueError(
+                    "Propellant mass is not sufficient to perform manoeuvre."
+                )
             # decompose elliptical disposal orbit and use time_to_anomaly after finding LTAN from position (meaning altitude)
             # Case from LEO into deorbitation
             if disposal_orbit.a < operational_orbit.a:
-                disposal_impact = elliptical_orbit_decomposition(CF_file, transfer_orbit, mass - burned_mass) # intermediate impact
+                disposal_impact_temp, new_disposal_impact_temp = (
+                    elliptical_orbit_decomposition(
+                        CF_file,
+                        new_CF_file,
+                        MASTER_flux,
+                        transfer_orbit,
+                        mass - burned_mass,
+                    )
+                )  # intermediate impact
                 if disposal_orbit.r_p < ALTITUDE_ATMOSPHERE_LIMIT + Earth.R:
                     natural_decay_impact = 0 * u.pot_fragments * u.year
+                    new_natural_decay_impact = 0 * u.kdollars
                 else:
                     # natural decay impact after successful EOLM
-                    natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass - burned_mass, transfer_duration, op_duration, SUCCESS)
+                    (
+                        natural_decay_time,
+                        natural_decay_impact,
+                        new_natural_decay_impact,
+                    ) = natural_decay(
+                        reduced_lifetime_file,
+                        CF_file,
+                        new_CF_file,
+                        MASTER_flux,
+                        disposal_orbit,
+                        cross_section,
+                        mass - burned_mass,
+                        transfer_duration,
+                        op_duration,
+                        SUCCESS,
+                    )
             # case going from LEO to above LEO in graveyard
             elif disposal_orbit.a > operational_orbit.a:
-                disposal_impact = elliptical_orbit_decomposition_up(CF_file, transfer_orbit, mass - burned_mass) # intermediate impact
+                disposal_impact_temp, new_disposal_impact_temp = (
+                    elliptical_orbit_decomposition_up(
+                        CF_file,
+                        new_CF_file,
+                        MASTER_flux,
+                        transfer_orbit,
+                        mass - burned_mass,
+                    )
+                )  # intermediate impact
                 if disposal_orbit.r_p < ALTITUDE_LEO_LIMIT + Earth.R:
                     # natural decay impact after successful EOLM
-                    natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass - burned_mass, transfer_duration, op_duration, SUCCESS)
+                    (
+                        natural_decay_time,
+                        natural_decay_impact,
+                        new_natural_decay_impact,
+                    ) = natural_decay(
+                        reduced_lifetime_file,
+                        CF_file,
+                        new_CF_file,
+                        MASTER_flux,
+                        disposal_orbit,
+                        cross_section,
+                        mass - burned_mass,
+                        transfer_duration,
+                        op_duration,
+                        SUCCESS,
+                    )
                 else:
                     natural_decay_impact = 0 * u.pot_fragments * u.year
-            
+                    new_natural_decay_impact = 0 * u.kdollars
+
             # Compute impact of natural decay in the case of no EOLM or an unsuccessful end-of-life manoeuvre (EOLM)
-            uns_natural_decay_time, uns_natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, operational_orbit, cross_section, mass, 0 * u.day, op_duration, FAIL)
+            (
+                uns_natural_decay_time,
+                uns_natural_decay_impact,
+                uns_new_natural_decay_impact,
+            ) = natural_decay(
+                reduced_lifetime_file,
+                CF_file,
+                new_CF_file,
+                MASTER_flux,
+                operational_orbit,
+                cross_section,
+                mass,
+                0 * u.day,
+                op_duration,
+                FAIL,
+            )
         else:
             transfer_duration = 0 * u.year
             burned_mass = 0 * u.kg
-            disposal_impact = 0 * u.pot_fragments * u.year * u.kg **(-1) * u.m **(-2) # intermediate impact
-            natural_decay_time, natural_decay_impact = natural_decay(reduced_lifetime_file, CF_file, disposal_orbit, cross_section, mass - burned_mass, transfer_duration, op_duration, SUCCESS)
+            disposal_impact_temp = (
+                0 * u.pot_fragments * u.year * u.kg ** (-1) * u.m ** (-2)
+            )  # intermediate impact
+            new_disposal_impact_temp = (
+                0 * u.kdollars * u.m ** (-2)
+            )  # intermediate impact
+            natural_decay_time, natural_decay_impact, new_natural_decay_impact = (
+                natural_decay(
+                    reduced_lifetime_file,
+                    CF_file,
+                    new_CF_file,
+                    MASTER_flux,
+                    disposal_orbit,
+                    cross_section,
+                    mass - burned_mass,
+                    transfer_duration,
+                    op_duration,
+                    SUCCESS,
+                )
+            )
             uns_natural_decay_impact = 0 * u.pot_fragments * u.year
+            uns_new_natural_decay_impact = 0 * u.kdollars
 
-        total_impact_score = operational_impact + (cross_section*(mass - burned_mass)*disposal_impact + natural_decay_impact)*PMD_success + (1-PMD_success)*uns_natural_decay_impact
+        total_impact_score = (
+            operational_impact
+            + PMD_success
+            * (
+                cross_section * (mass - burned_mass) * disposal_impact_temp
+                + natural_decay_impact
+            )
+            + (1 - PMD_success) * uns_natural_decay_impact
+        )
+        new_total_impact_score = (
+            new_OP_impact
+            + PMD_success
+            * (new_disposal_impact_temp * cross_section + new_natural_decay_impact)
+            + (1 - PMD_success) * uns_new_natural_decay_impact
+        )
 
-        natural_impact_percentage = (natural_decay_impact*PMD_success + (1-PMD_success)*uns_natural_decay_impact)/total_impact_score
-        op_impact_percentage = operational_impact/total_impact_score
-        disp_maneuver_impact_percentage = 1 - natural_impact_percentage - op_impact_percentage
+        natural_impact_percentage = (
+            natural_decay_impact * PMD_success
+            + (1 - PMD_success) * uns_natural_decay_impact
+        ) / total_impact_score
+        op_impact_percentage = operational_impact / total_impact_score
+        disp_maneuver_impact_percentage = (
+            1 - natural_impact_percentage - op_impact_percentage
+        )
 
-        print("--\n Computed space debris impact score is", "{:.3f}".format(total_impact_score), ".", "{:.3f}".format(op_impact_percentage), "percent from operations, ", "{:.3f}".format(disp_maneuver_impact_percentage), "percent from disposal manoeuvre, ", "{:.3f}".format(natural_impact_percentage), "percent from natural decay.")
-        
-        results = {"Space_Debris_Index": total_impact_score, "Operational_percentage": op_impact_percentage, "Disposal_manoeuvre_percentage": disp_maneuver_impact_percentage, "Natural_decay_percentage": natural_impact_percentage,
-                    "Transfer_duration": transfer_duration.to(u.year), "Mass_burnt": burned_mass}
+        if new_total_impact_score == 0:
+            new_op_impact_percentage = 0
+        else:
+            new_op_impact_percentage = new_OP_impact / new_total_impact_score
+        new_natural_impact_percentage = (
+            new_natural_decay_impact * PMD_success
+            + (1 - PMD_success) * uns_new_natural_decay_impact
+        ) / new_total_impact_score
+        new_disp_maneuver_impact_percentage = (
+            1 - new_op_impact_percentage - new_natural_impact_percentage
+        )
+
+        print(
+            "--\n Computed space debris impact score is",
+            "{:.3f}".format(total_impact_score),
+            ".",
+            "{:.3f}".format(op_impact_percentage * 100),
+            "percent from operations, ",
+            "{:.3f}".format(disp_maneuver_impact_percentage * 100),
+            "percent from disposal manoeuvre, ",
+            "{:.3f}".format(natural_impact_percentage * 100),
+            "percent from natural decay.",
+        )
+
+        results = {
+            "Space_Debris_Index_2019": total_impact_score,
+            "Space_Debris_Index_2022": new_total_impact_score,
+            "Operational_percentage_2019": op_impact_percentage,
+            "Disposal_manoeuvre_percentage_2019": disp_maneuver_impact_percentage,
+            "Natural_decay_percentage_2019": natural_impact_percentage,
+            "Operational_percentage_2022": new_op_impact_percentage,
+            "Disposal_manoeuvre_percentage_2022": new_disp_maneuver_impact_percentage,
+            "Natural_decay_percentage_2022": new_natural_impact_percentage,
+            "Transfer_duration": transfer_duration.to(u.year),
+            "Mass_burnt": burned_mass,
+        }
         return results
 
-sdi_main(starting_epoch, op_duration, mass, cross_section, mean_thrust, Isp, number_of_launch_es, apogee_object_op, perigee_object_op, inc_object_op, EOL_manoeuvre, PMD_success, apogee_object_disp, perigee_object_disp, 
-            inc_object_disp, ADR_stage, m_ADR, ADR_cross_section, ADR_mean_thrust, ADR_Isp, ADR_manoeuvre_success, ADR_capture_success, m_debris, debris_cross_section, apogee_debris, perigee_debris, inc_debris, 
-            apogee_debris_removal, perigee_debris_removal, inc_debris_removal)
+
+sdi_main(
+    starting_epoch,
+    op_duration,
+    mass,
+    cross_section,
+    mean_thrust,
+    Isp,
+    number_of_launch_es,
+    apogee_object_op,
+    perigee_object_op,
+    inc_object_op,
+    EOL_manoeuvre,
+    PMD_success,
+    apogee_object_disp,
+    perigee_object_disp,
+    inc_object_disp,
+    ADR_stage,
+    m_ADR,
+    ADR_cross_section,
+    ADR_mean_thrust,
+    ADR_Isp,
+    ADR_manoeuvre_success,
+    ADR_capture_success,
+    m_debris,
+    debris_cross_section,
+    apogee_debris,
+    perigee_debris,
+    inc_debris,
+    apogee_debris_removal,
+    perigee_debris_removal,
+    inc_debris_removal,
+)
