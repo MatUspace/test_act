@@ -1,6 +1,6 @@
 {
   "starting_epoch": "2018-01-01 12:00:00",
-  "op_ending_epoch": "2026-01-01 12:00:00",
+  "op_duration": 0.1, 
 
   "mass": 1250, 
   "cross_section": 15.5,
